@@ -1,9 +1,6 @@
-diff --git a/README.md b/README.md
-index 246563ddba26dc1cfd1852d18e1f0ccab6266a4b..8cc06eb7826992c43a0a047202fb4ba44c75bc9a 100644
---- a/README.md
-+++ b/README.md
-@@ -1,8 +1,35 @@
+## Europa
 -This is a simple proof of concept new model was created in python to model processes on Europa. The goal of this model is to assess the stability of proposed subsurface configurations while remaining a relatively simple model. 
+
 +# Europa Ocean Model
  
 -The unknown subsurface structure makes giving specific quantitative predictions as to real world configuration difficult.  
