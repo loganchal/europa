@@ -24,3 +24,6 @@ streamlit run app.py
 ```
 
 This launches a local web page where you can tune planetary parameters and watch the temperature profile update.
+
+## Next steps
+Ideally, the values here will be physically constrained, we don't know how deep the ice layer is but suspect there is a liqud ocean underneath. The characteristics of that ocean could be important to determine if it has the capacity to support life. 
