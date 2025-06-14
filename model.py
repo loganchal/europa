@@ -10,21 +10,25 @@ def run_simulation(
     geothermal_heat_flux=1,
     love_number=0.15,
     tidal_heating_coefficient=0.01,
-    g=1.315,
-    albedo=0.64,
-    solar_radiation_flux=50,
     depth=127000.0,
+    ice_depth=25000.0,
+    record=False,
+    frame_interval=50,
 ):
     """Run the Europa ocean model simulation.
 
     Parameters match the variables from the original script. The function
-    returns the temperature profile, corresponding depth points and the
-    highest extent of ice reached during the run.
+    returns the temperature profile, corresponding depth points, the
+    highest extent of ice reached during the run and a list of frames for
+    animation when ``record`` is ``True``.
     """
     # Physical constants
     kappa = 1e-6  # Thermal diffusivity of water (in m^2/s)
     latent_heat_fusion = 334000  # Latent heat of fusion for ice-water transition (J/kg)
     sigma = 5.67e-8  # Stefan-Boltzmann constant (W/m^2/K^4)
+    g = 1.315  # Gravity (m/s^2)
+    albedo = 0.64
+    solar_radiation_flux = 50
 
     num_points = int(depth / spatial_resolution) + 1
     days_per_week = 7
@@ -41,13 +45,16 @@ def run_simulation(
 
     # Initial conditions
     depth_points = np.linspace(0, depth, num_points)
-    initial_temp = np.where(depth_points <= 25000,
-                            0 + -160 * (1 - depth_points[:num_points] / 25000),
-                            40)
+    initial_temp = np.where(
+        depth_points <= ice_depth,
+        0 + -160 * (1 - depth_points[:num_points] / ice_depth),
+        40,
+    )
 
     temperature = initial_temp.copy()
     prev_temperature = temperature.copy()
     percent_complete = 0
+    frames = []
 
     print("Simulation Progress:")
     for t in range(1, total_time_steps):
@@ -111,25 +118,32 @@ def run_simulation(
             print(f"{percent_complete:.0f}% complete")
             percent_complete += 1
 
-    return temperature, depth_points, highest_ice_extent
+        if record and t % frame_interval == 0:
+            frames.append(temperature.copy())
+    if record:
+        frames.append(temperature.copy())
+
+    return temperature, depth_points, highest_ice_extent, frames
 
 
 def plot_profile(temperature, depth_points, highest_ice_extent):
     """Plot the final water column profile."""
-    plt.plot(temperature, depth_points, label="Water Temperature")
-    plt.xlabel("Temperature (°C)")
-    plt.ylabel("Depth (m)")
-    plt.title("Water Column at Finish")
-    plt.axhline(y=highest_ice_extent, color="g", linestyle="--", label="Ice Depth")
-    plt.text(temperature[0], highest_ice_extent,
-             f"Ice Depth: {highest_ice_extent:.0f} m",
-             verticalalignment="bottom")
-    plt.gca().invert_yaxis()
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    fig, ax = plt.subplots()
+    ax.plot(temperature, depth_points, label="Water Temperature")
+    ax.set_xlabel("Temperature (°C)")
+    ax.set_ylabel("Depth (m)")
+    ax.set_title("Water Column at Finish")
+    ax.axhline(y=highest_ice_extent, color="g", linestyle="--", label="Ice Depth")
+    ax.text(temperature[0], highest_ice_extent,
+            f"Ice Depth: {highest_ice_extent:.0f} m",
+            verticalalignment="bottom")
+    ax.invert_yaxis()
+    ax.legend()
+    ax.grid(True)
+    return fig
 
 
 if __name__ == "__main__":
-    temp, depth_pts, ice_extent = run_simulation()
-    plot_profile(temp, depth_pts, ice_extent)
+    temp, depth_pts, ice_extent, _ = run_simulation()
+    fig = plot_profile(temp, depth_pts, ice_extent)
+    plt.show()
