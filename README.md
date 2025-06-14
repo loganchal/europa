@@ -1,8 +1,22 @@
-This is a simple proof of concept new model was created in python to model processes on Europa. The goal of this model is to assess the stability of proposed subsurface configurations while remaining a relatively simple model. 
+# Europa Ocean Model
 
-The unknown subsurface structure makes giving specific quantitative predictions as to real world configuration difficult.  
+This repository contains a small Python model that simulates a possible internal ocean on Europa. The code can be run from the command line or through a simple Streamlit GUI that lets you adjust parameters and view the resulting temperature profile.
 
-The model appears viable at assessing different stability states. 
+## Running the simulation
 
-The model takes a few parameters of the planet in question, geothermal heat flux to the ocean, the love number, tidal heating coefficient, gravity, albedo, solar radiation flux and hydrosphere depth. It also uses some physical constants and takes spatial and temporal resolution specifications. Finally, an initial starting temperature profile is read into the model. 
+Install requirements and run the model directly:
 
+```bash
+pip install -r requirements.txt
+python model.py
+```
+
+## Interactive web app
+
+To explore the model with sliders and number inputs run:
+
+```bash
+streamlit run app.py
+```
+
+This launches a local web page where you can tune planetary parameters and watch the temperature profile update.
