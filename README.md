@@ -51,8 +51,7 @@ Ideally, the values here will be physically constrained, we don't know how deep 
 - Dr Sean McMahon (School of Physics and Astronomy, the Univeristy of Edinburgh) for scientific input and suggestions. 
 - Dr Robert Smith (Department of Marine Science, the Univeristy of Otago) for code and guidence on PWP models that I modified into this project.
 
-## License 
-MIT License
+## MIT License
 
 Copyright (c) 2025 Logan Chalmers
 
