@@ -1,4 +1,4 @@
-name: Temporary Ewald dimension-9 data probe
+name: Temporary Ewald dimension-9 scan
 
 on:
   push:
@@ -9,20 +9,23 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        facets: [10, 18, 26]
+        facets: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
     steps:
-      - name: Inspect classification file
-        shell: bash
-        run: |
-          set -euo pipefail
-          url="https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-${{ matrix.facets }}p.gz"
-          curl -fL --retry 3 "$url" -o data.gz
-          echo "URL=$url"
-          echo "BYTES=$(wc -c < data.gz)"
-          gzip -dc data.gz | head -n 30 || true
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - name: Scan dimension-9 classification file
+        run: python ewald_scan9.py --facets ${{ matrix.facets }} --out result-9-${{ matrix.facets }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ewald9-${{ matrix.facets }}
+          path: result-9-${{ matrix.facets }}.json
+          retention-days: 1
