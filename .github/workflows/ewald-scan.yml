@@ -1,4 +1,4 @@
-name: Temporary Ewald dimension-9 href probe
+name: Temporary Ewald dimension-9 data probe
 
 on:
   push:
@@ -12,10 +12,17 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        facets: [10, 18, 26]
     steps:
-      - name: Extract dimension-9 data links
+      - name: Inspect classification file
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL --retry 3 'https://polymake.org/polytopes/paffenholz/www/fano.html' -o fano.html
-          grep -oE 'href="[^"]*fv-09-[0-9]+p\.gz"' fano.html | head -30
+          url="https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-${{ matrix.facets }}p.gz"
+          curl -fL --retry 3 "$url" -o data.gz
+          echo "URL=$url"
+          echo "BYTES=$(wc -c < data.gz)"
+          gzip -dc data.gz | head -n 30 || true
