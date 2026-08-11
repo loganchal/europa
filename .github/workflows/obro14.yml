@@ -1,0 +1,60 @@
+name: Temporary dimension-10 rank-4 Obro scan
+on:
+  push:
+    branches: [chatgpt-ewald-probe-20260811]
+permissions:
+  contents: read
+jobs:
+  rank4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Fetch and patch Obro generator
+        run: |
+          set -euo pipefail
+          curl -fL https://raw.githubusercontent.com/rohansjoshi/Obro-SFP/main/smooth_Fanos.cpp -o smooth_Fanos.cpp
+          python - <<'PY'
+          p='smooth_Fanos.cpp'
+          s=open(p).read()
+          needle='''    remove_facets(number_of_facets);\n    // Determine which hyperplanes to place the next vertex in.'''
+          repl='''    remove_facets(number_of_facets);\n    // Fixed Picard-rank-4 search: in dimension 10 stop after testing 14 rays.\n    if (vertices.size() >= 14) return;\n    // Determine which hyperplanes to place the next vertex in.'''
+          assert needle in s
+          s=s.replace(needle,repl,1)
+          start=s.index('// MAIN\nint main')
+          s=s[:start]+r'''// MAIN -- fixed dimension 10 for the rank-4 cutoff experiment
+int main() {
+    d = 10;
+    fanovert.open("fanovertd10_max14");
+    msg.open("msgd10_max14");
+    msg << endl << "SFP-algorithm: dimension " << d << ", maximum 14 vertices" << endl << endl;
+    number_of_equivalence_classes.assign(3 * d + 1, 0);
+    sfp();
+    msg << "Construction finished!" << endl << endl;
+    for (int i=d+1;i<=14;++i)
+        msg << number_of_equivalence_classes[i] << " with " << i << " vertices." << endl;
+    msg << "Total through 14 vertices: " << (int)accumulate(number_of_equivalence_classes.begin(), number_of_equivalence_classes.end(), 0) << endl;
+    fanovert.close(); msg.close();
+    return 0;
+}
+'''
+          open(p,'w').write(s)
+          PY
+          g++ -O3 -std=c++17 smooth_Fanos.cpp -o obro14
+      - name: Enumerate dimension-10 classes through 14 rays
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v ./obro14
+          cat msgd10_max14
+          awk 'NF==0{if(n){print n;n=0};next}{n++}END{if(n)print n}' fanovertd10_max14 | sort -n | uniq -c > raycounts.txt
+          echo 'OUTPUT_BLOCK_COUNTS'; cat raycounts.txt
+          cp msgd10_max14 obro14-summary.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: obro10-max14
+          path: |
+            obro14-summary.txt
+            raycounts.txt
+            fanovertd10_max14
+          retention-days: 1
+          if-no-files-found: warn
