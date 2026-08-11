@@ -1,4 +1,4 @@
-name: Temporary dimension-8 neatness scan
+name: Temporary exact dimension-9 neatness scan
 
 on:
   push:
@@ -9,26 +9,572 @@ permissions:
   contents: read
 
 jobs:
-  neat8:
+  neat9:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 40
       matrix:
-        block: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100]
+        include:
+          - facets: 10
+            shard: 0
+            shards: 1
+          - facets: 11
+            shard: 0
+            shards: 1
+          - facets: 12
+            shard: 0
+            shards: 1
+          - facets: 13
+            shard: 0
+            shards: 1
+          - facets: 14
+            shard: 0
+            shards: 12
+          - facets: 14
+            shard: 1
+            shards: 12
+          - facets: 14
+            shard: 2
+            shards: 12
+          - facets: 14
+            shard: 3
+            shards: 12
+          - facets: 14
+            shard: 4
+            shards: 12
+          - facets: 14
+            shard: 5
+            shards: 12
+          - facets: 14
+            shard: 6
+            shards: 12
+          - facets: 14
+            shard: 7
+            shards: 12
+          - facets: 14
+            shard: 8
+            shards: 12
+          - facets: 14
+            shard: 9
+            shards: 12
+          - facets: 14
+            shard: 10
+            shards: 12
+          - facets: 14
+            shard: 11
+            shards: 12
+          - facets: 15
+            shard: 0
+            shards: 40
+          - facets: 15
+            shard: 1
+            shards: 40
+          - facets: 15
+            shard: 2
+            shards: 40
+          - facets: 15
+            shard: 3
+            shards: 40
+          - facets: 15
+            shard: 4
+            shards: 40
+          - facets: 15
+            shard: 5
+            shards: 40
+          - facets: 15
+            shard: 6
+            shards: 40
+          - facets: 15
+            shard: 7
+            shards: 40
+          - facets: 15
+            shard: 8
+            shards: 40
+          - facets: 15
+            shard: 9
+            shards: 40
+          - facets: 15
+            shard: 10
+            shards: 40
+          - facets: 15
+            shard: 11
+            shards: 40
+          - facets: 15
+            shard: 12
+            shards: 40
+          - facets: 15
+            shard: 13
+            shards: 40
+          - facets: 15
+            shard: 14
+            shards: 40
+          - facets: 15
+            shard: 15
+            shards: 40
+          - facets: 15
+            shard: 16
+            shards: 40
+          - facets: 15
+            shard: 17
+            shards: 40
+          - facets: 15
+            shard: 18
+            shards: 40
+          - facets: 15
+            shard: 19
+            shards: 40
+          - facets: 15
+            shard: 20
+            shards: 40
+          - facets: 15
+            shard: 21
+            shards: 40
+          - facets: 15
+            shard: 22
+            shards: 40
+          - facets: 15
+            shard: 23
+            shards: 40
+          - facets: 15
+            shard: 24
+            shards: 40
+          - facets: 15
+            shard: 25
+            shards: 40
+          - facets: 15
+            shard: 26
+            shards: 40
+          - facets: 15
+            shard: 27
+            shards: 40
+          - facets: 15
+            shard: 28
+            shards: 40
+          - facets: 15
+            shard: 29
+            shards: 40
+          - facets: 15
+            shard: 30
+            shards: 40
+          - facets: 15
+            shard: 31
+            shards: 40
+          - facets: 15
+            shard: 32
+            shards: 40
+          - facets: 15
+            shard: 33
+            shards: 40
+          - facets: 15
+            shard: 34
+            shards: 40
+          - facets: 15
+            shard: 35
+            shards: 40
+          - facets: 15
+            shard: 36
+            shards: 40
+          - facets: 15
+            shard: 37
+            shards: 40
+          - facets: 15
+            shard: 38
+            shards: 40
+          - facets: 15
+            shard: 39
+            shards: 40
+          - facets: 16
+            shard: 0
+            shards: 50
+          - facets: 16
+            shard: 1
+            shards: 50
+          - facets: 16
+            shard: 2
+            shards: 50
+          - facets: 16
+            shard: 3
+            shards: 50
+          - facets: 16
+            shard: 4
+            shards: 50
+          - facets: 16
+            shard: 5
+            shards: 50
+          - facets: 16
+            shard: 6
+            shards: 50
+          - facets: 16
+            shard: 7
+            shards: 50
+          - facets: 16
+            shard: 8
+            shards: 50
+          - facets: 16
+            shard: 9
+            shards: 50
+          - facets: 16
+            shard: 10
+            shards: 50
+          - facets: 16
+            shard: 11
+            shards: 50
+          - facets: 16
+            shard: 12
+            shards: 50
+          - facets: 16
+            shard: 13
+            shards: 50
+          - facets: 16
+            shard: 14
+            shards: 50
+          - facets: 16
+            shard: 15
+            shards: 50
+          - facets: 16
+            shard: 16
+            shards: 50
+          - facets: 16
+            shard: 17
+            shards: 50
+          - facets: 16
+            shard: 18
+            shards: 50
+          - facets: 16
+            shard: 19
+            shards: 50
+          - facets: 16
+            shard: 20
+            shards: 50
+          - facets: 16
+            shard: 21
+            shards: 50
+          - facets: 16
+            shard: 22
+            shards: 50
+          - facets: 16
+            shard: 23
+            shards: 50
+          - facets: 16
+            shard: 24
+            shards: 50
+          - facets: 16
+            shard: 25
+            shards: 50
+          - facets: 16
+            shard: 26
+            shards: 50
+          - facets: 16
+            shard: 27
+            shards: 50
+          - facets: 16
+            shard: 28
+            shards: 50
+          - facets: 16
+            shard: 29
+            shards: 50
+          - facets: 16
+            shard: 30
+            shards: 50
+          - facets: 16
+            shard: 31
+            shards: 50
+          - facets: 16
+            shard: 32
+            shards: 50
+          - facets: 16
+            shard: 33
+            shards: 50
+          - facets: 16
+            shard: 34
+            shards: 50
+          - facets: 16
+            shard: 35
+            shards: 50
+          - facets: 16
+            shard: 36
+            shards: 50
+          - facets: 16
+            shard: 37
+            shards: 50
+          - facets: 16
+            shard: 38
+            shards: 50
+          - facets: 16
+            shard: 39
+            shards: 50
+          - facets: 16
+            shard: 40
+            shards: 50
+          - facets: 16
+            shard: 41
+            shards: 50
+          - facets: 16
+            shard: 42
+            shards: 50
+          - facets: 16
+            shard: 43
+            shards: 50
+          - facets: 16
+            shard: 44
+            shards: 50
+          - facets: 16
+            shard: 45
+            shards: 50
+          - facets: 16
+            shard: 46
+            shards: 50
+          - facets: 16
+            shard: 47
+            shards: 50
+          - facets: 16
+            shard: 48
+            shards: 50
+          - facets: 16
+            shard: 49
+            shards: 50
+          - facets: 17
+            shard: 0
+            shards: 35
+          - facets: 17
+            shard: 1
+            shards: 35
+          - facets: 17
+            shard: 2
+            shards: 35
+          - facets: 17
+            shard: 3
+            shards: 35
+          - facets: 17
+            shard: 4
+            shards: 35
+          - facets: 17
+            shard: 5
+            shards: 35
+          - facets: 17
+            shard: 6
+            shards: 35
+          - facets: 17
+            shard: 7
+            shards: 35
+          - facets: 17
+            shard: 8
+            shards: 35
+          - facets: 17
+            shard: 9
+            shards: 35
+          - facets: 17
+            shard: 10
+            shards: 35
+          - facets: 17
+            shard: 11
+            shards: 35
+          - facets: 17
+            shard: 12
+            shards: 35
+          - facets: 17
+            shard: 13
+            shards: 35
+          - facets: 17
+            shard: 14
+            shards: 35
+          - facets: 17
+            shard: 15
+            shards: 35
+          - facets: 17
+            shard: 16
+            shards: 35
+          - facets: 17
+            shard: 17
+            shards: 35
+          - facets: 17
+            shard: 18
+            shards: 35
+          - facets: 17
+            shard: 19
+            shards: 35
+          - facets: 17
+            shard: 20
+            shards: 35
+          - facets: 17
+            shard: 21
+            shards: 35
+          - facets: 17
+            shard: 22
+            shards: 35
+          - facets: 17
+            shard: 23
+            shards: 35
+          - facets: 17
+            shard: 24
+            shards: 35
+          - facets: 17
+            shard: 25
+            shards: 35
+          - facets: 17
+            shard: 26
+            shards: 35
+          - facets: 17
+            shard: 27
+            shards: 35
+          - facets: 17
+            shard: 28
+            shards: 35
+          - facets: 17
+            shard: 29
+            shards: 35
+          - facets: 17
+            shard: 30
+            shards: 35
+          - facets: 17
+            shard: 31
+            shards: 35
+          - facets: 17
+            shard: 32
+            shards: 35
+          - facets: 17
+            shard: 33
+            shards: 35
+          - facets: 17
+            shard: 34
+            shards: 35
+          - facets: 18
+            shard: 0
+            shards: 20
+          - facets: 18
+            shard: 1
+            shards: 20
+          - facets: 18
+            shard: 2
+            shards: 20
+          - facets: 18
+            shard: 3
+            shards: 20
+          - facets: 18
+            shard: 4
+            shards: 20
+          - facets: 18
+            shard: 5
+            shards: 20
+          - facets: 18
+            shard: 6
+            shards: 20
+          - facets: 18
+            shard: 7
+            shards: 20
+          - facets: 18
+            shard: 8
+            shards: 20
+          - facets: 18
+            shard: 9
+            shards: 20
+          - facets: 18
+            shard: 10
+            shards: 20
+          - facets: 18
+            shard: 11
+            shards: 20
+          - facets: 18
+            shard: 12
+            shards: 20
+          - facets: 18
+            shard: 13
+            shards: 20
+          - facets: 18
+            shard: 14
+            shards: 20
+          - facets: 18
+            shard: 15
+            shards: 20
+          - facets: 18
+            shard: 16
+            shards: 20
+          - facets: 18
+            shard: 17
+            shards: 20
+          - facets: 18
+            shard: 18
+            shards: 20
+          - facets: 18
+            shard: 19
+            shards: 20
+          - facets: 19
+            shard: 0
+            shards: 8
+          - facets: 19
+            shard: 1
+            shards: 8
+          - facets: 19
+            shard: 2
+            shards: 8
+          - facets: 19
+            shard: 3
+            shards: 8
+          - facets: 19
+            shard: 4
+            shards: 8
+          - facets: 19
+            shard: 5
+            shards: 8
+          - facets: 19
+            shard: 6
+            shards: 8
+          - facets: 19
+            shard: 7
+            shards: 8
+          - facets: 20
+            shard: 0
+            shards: 4
+          - facets: 20
+            shard: 1
+            shards: 4
+          - facets: 20
+            shard: 2
+            shards: 4
+          - facets: 20
+            shard: 3
+            shards: 4
+          - facets: 21
+            shard: 0
+            shards: 3
+          - facets: 21
+            shard: 1
+            shards: 3
+          - facets: 21
+            shard: 2
+            shards: 3
+          - facets: 22
+            shard: 0
+            shards: 2
+          - facets: 22
+            shard: 1
+            shards: 2
+          - facets: 23
+            shard: 0
+            shards: 1
+          - facets: 24
+            shard: 0
+            shards: 1
+          - facets: 25
+            shard: 0
+            shards: 1
+          - facets: 26
+            shard: 0
+            shards: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check numpy scipy
-      - name: Exact neatness scan of one classification block
-        run: python neat_scan8.py --block ${{ matrix.block }} --out neat8-${{ matrix.block }}.json
+      - name: Exact neatness scan of dimension-9 shard
+        run: python neat_exact9.py --facets ${{ matrix.facets }} --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --out neat9-${{ matrix.facets }}-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: neat8-${{ matrix.block }}
-          path: neat8-${{ matrix.block }}.json
+          name: neat9-${{ matrix.facets }}-${{ matrix.shard }}
+          path: neat9-${{ matrix.facets }}-${{ matrix.shard }}.json
           retention-days: 1
           if-no-files-found: warn
