@@ -11,12 +11,12 @@ permissions:
 jobs:
   large:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 7
+      max-parallel: 11
       matrix:
-        facets: [20,21,22,23,24,25,26]
+        facets: [16,17,18,19,20,21,22,23,24,25,26]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
