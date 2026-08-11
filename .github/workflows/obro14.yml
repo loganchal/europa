@@ -16,6 +16,9 @@ jobs:
           python - <<'PY'
           p='smooth_Fanos.cpp'
           s=open(p).read()
+          # The thesis appendix relied on transitive inclusion of <algorithm>.
+          if '#include <algorithm>' not in s:
+              s=s.replace('#include <numeric>', '#include <numeric>\n#include <algorithm>', 1)
           needle='    remove_facets(number_of_facets);\n    // Determine which hyperplanes to place the next vertex in.'
           repl='    remove_facets(number_of_facets);\n    // Fixed Picard-rank-4 search: stop after testing 14 rays.\n    if (vertices.size() >= 14) return;\n    // Determine which hyperplanes to place the next vertex in.'
           assert needle in s
