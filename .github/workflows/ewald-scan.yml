@@ -1,4 +1,4 @@
-name: Temporary Ewald dimension-9 scan
+name: Temporary dimension-9 neatness prefilter
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  scan:
+  neat:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -21,11 +21,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check numpy
-      - name: Scan dimension-9 classification file
-        run: python ewald_scan9.py --facets ${{ matrix.facets }} --out result-9-${{ matrix.facets }}.json
+      - name: Screen integral deformation boxes
+        run: python neat_screen9.py --facets ${{ matrix.facets }} --out neat-9-${{ matrix.facets }}.json
       - uses: actions/upload-artifact@v4
         with:
-          name: ewald9-${{ matrix.facets }}
-          path: result-9-${{ matrix.facets }}.json
+          name: neat9-${{ matrix.facets }}
+          path: neat-9-${{ matrix.facets }}.json
           retention-days: 1
