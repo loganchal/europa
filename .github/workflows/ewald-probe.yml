@@ -1,0 +1,72 @@
+name: Temporary Ewald hard-seed probe
+on:
+  push:
+    branches: [chatgpt-ewald-probe-20260811]
+permissions:
+  contents: read
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Extract class 52 and exact displacement data
+        run: |
+          python - <<'PY'
+          import gzip,urllib.request,json,itertools,numpy as np
+          from scipy.spatial import ConvexHull
+          D=9; idx=52
+          url='https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-11p.gz'
+          path='/tmp/f.gz';urllib.request.urlretrieve(url,path)
+          cur=[];recs=[]
+          with gzip.open(path,'rt') as f:
+            for raw in f:
+              s=raw.strip()
+              if s=='FACETS':
+                if cur:recs.append(cur);cur=[]
+              elif s:
+                z=[int(x) for x in s.split()]
+                if len(z)==10 and z[0]==1:cur.append([-q for q in z[1:]])
+            if cur:recs.append(cur)
+          U=np.array(recs[idx-1],dtype=int)
+          assert np.array_equal(U[:D],np.eye(D,dtype=int))
+          widths=(-U[D:].sum(axis=1)).astype(int)
+          # Exact fan facets and displacement constraints.
+          hull=ConvexHull(U.astype(float),qhull_options='Qt')
+          cones=np.unique(np.sort(hull.simplices,axis=1),axis=0)
+          ranges=[range(-int(w),int(w)+1) for w in widths]
+          Z=np.array(list(itertools.product(*ranges)),dtype=int)
+          alive=np.ones(len(Z),dtype=bool)
+          for I in cones:
+            M=U[I]; inv=np.rint(np.linalg.inv(M)).astype(int); assert np.array_equal(M@inv,np.eye(D,dtype=int))
+            alpha=U@inv;delta=1-alpha.sum(axis=1);non=np.ones(len(U),dtype=bool);non[I]=False;js=np.flatnonzero(non)
+            K=np.zeros((len(js),len(widths)),dtype=int)
+            for t,r in enumerate(I):
+              if r>=D:K[:,r-D]+=alpha[js,t]
+            for row,j in enumerate(js):
+              if j>=D:K[row,j-D]-=1
+            B=delta[js]-1
+            ids=np.flatnonzero(alive);good=np.all(np.abs(Z[ids]@K.T)<=B,axis=1);alive[ids[~good]]=False
+          surv=Z[alive]
+          G=np.array(list(itertools.product((-1,0,1),repeat=D)),dtype=int);vals=G@U[D:].T
+          rows=[]
+          for z in surv:
+            ok=np.ones(len(G),dtype=bool)
+            for k,q in enumerate(z):ok &= np.abs(vals[:,k]-q)<=1
+            pts=G[ok]
+            rows.append({'b':[0]*D+z.tolist(),'intersection_count':len(pts),'intersection_points':pts.tolist() if len(pts)<=64 else []})
+          rows.sort(key=lambda r:r['intersection_count'])
+          out={'dimension':D,'facet_count':len(U),'ordinal':idx,'normals':U.tolist(),'widths':widths.tolist(),'fan_cones':[x.tolist() for x in cones],
+               'valid_displacements':len(surv),'displacements':rows}
+          open('hard-neat9-11-52.json','w').write(json.dumps(out,separators=(',',':')))
+          print(json.dumps({k:v for k,v in out.items() if k not in ('normals','fan_cones','displacements')}|{'best':rows[:5]},separators=(',',':')))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hard-neat9-11-52
+          path: hard-neat9-11-52.json
+          retention-days: 1
