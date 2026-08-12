@@ -1,0 +1,36 @@
+name: Temporary certified d9 neatness scan
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-neat9-full-20260813
+
+permissions:
+  contents: read
+
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - facets: 14
+            shard: 0
+            shards: 1000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Certified exact neatness shard
+        run: python neat_exact9_cert.py --facets ${{ matrix.facets }} --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --out result-${{ matrix.facets }}-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ matrix.facets }}-${{ matrix.shard }}
+          path: result-${{ matrix.facets }}-${{ matrix.shard }}.json
+          retention-days: 1
+          if-no-files-found: warn
