@@ -9,16 +9,29 @@ permissions:
   contents: read
 
 jobs:
-  exact:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - id: matrix
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          shards={10:1,11:1,12:1,13:1,14:18,15:61,16:84,17:55,18:20,19:5,20:1,21:1,22:1,23:1,24:1,25:1,26:1}
+          include=[{'facets':f,'shard':s,'shards':n} for f,n in shards.items() for s in range(n)]
+          print('value='+json.dumps({'include':include},separators=(',',':')))
+          PY
+
+  exact:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - facets: 14
-            shard: 0
-            shards: 1000
+      max-parallel: 40
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
