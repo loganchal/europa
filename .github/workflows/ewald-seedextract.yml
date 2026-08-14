@@ -1,0 +1,26 @@
+name: Temporary d9 seed extraction
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-seedextract-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - run: python extract_d9_seed.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seed9-16-2822308
+          path: seed9-16-2822308.json
+          retention-days: 3
