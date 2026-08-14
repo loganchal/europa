@@ -1,0 +1,54 @@
+name: Temporary exact Batyrev 14-ray neatness scan
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-batyrev-blowups-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        include:
+          - {name: s00, start: 0, end: 76}
+          - {name: s01, start: 76, end: 151}
+          - {name: s02, start: 151, end: 226}
+          - {name: s03, start: 226, end: 302}
+          - {name: s04, start: 302, end: 378}
+          - {name: s05, start: 378, end: 453}
+          - {name: s06, start: 453, end: 528}
+          - {name: s07, start: 528, end: 604}
+          - {name: s08, start: 604, end: 680}
+          - {name: s09, start: 680, end: 755}
+          - {name: s10, start: 755, end: 830}
+          - {name: s11, start: 830, end: 906}
+          - {name: s12, start: 906, end: 982}
+          - {name: s13, start: 982, end: 1057}
+          - {name: s14, start: 1057, end: 1132}
+          - {name: s15, start: 1132, end: 1208}
+          - {name: s16, start: 1208, end: 1284}
+          - {name: s17, start: 1284, end: 1359}
+          - {name: s18, start: 1359, end: 1434}
+          - {name: s19, start: 1434, end: 1510}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - name: Scan exact blowups
+        run: python scan_batyrev_blowups.py --start ${{ matrix.start }} --end ${{ matrix.end }} --out result-${{ matrix.name }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ matrix.name }}
+          path: result-${{ matrix.name }}.json
+          retention-days: 3
+          if-no-files-found: warn
