@@ -10,16 +10,16 @@ permissions:
 jobs:
   bench:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 20
       matrix:
-        shard: [0,1,2,3,4,5,6,7]
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
     env:
       TARGET: '14'
       SHARD: ${{ matrix.shard }}
-      SHARDS: '8'
+      SHARDS: '32'
     steps:
       - uses: actions/checkout@v4
       - name: Fetch and patch Obro generator
@@ -42,8 +42,12 @@ jobs:
           new='''if ((int)vertices.size() == target_vertices && conv_is_fano() && it_is_new(sum_vertices))\n        output_vertices();'''
           assert old in s
           s=s.replace(old,new,1)
+          old='''remove_facets(number_of_facets);'''
+          new='''remove_facets(number_of_facets);\n    if ((int)vertices.size() >= target_vertices) return;'''
+          assert old in s
+          s=s.replace(old,new,1)
           old='''if (checksubset() && compare_representation(vertices, false) != 1)\n                addpoint();'''
-          new='''if ((int)vertices.size() < target_vertices && checksubset() && compare_representation(vertices, false) != 1) {\n                if ((int)vertices.size() != d + 1 || first_vertex_in_shard(new_vertex)) addpoint();\n            }'''
+          new='''if ((int)vertices.size() <= target_vertices && checksubset() && compare_representation(vertices, false) != 1) {\n                if ((int)vertices.size() != d + 1 || first_vertex_in_shard(new_vertex)) addpoint();\n            }'''
           assert old in s
           s=s.replace(old,new,1)
           s=s.replace('if (st.size() != 1)', 'if (st.size() < 1 || st.size() > 2)',1)
@@ -67,7 +71,7 @@ jobs:
         with:
           name: obro14-bench-${{ matrix.shard }}
           path: |
-            run-${{ matrix.shard }}.log
+            run-${SHARD}.log
             fanovertd1
             msgd1
           retention-days: 1
