@@ -1,0 +1,29 @@
+name: Temporary d10 bundle threshold scan
+on:
+  push:
+    branches: [chatgpt-ewald-bundle-threshold-20260814]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - run: python bundle_threshold10.py --shard ${{ matrix.shard }} --shards 16 --out bundle-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-${{ matrix.shard }}
+          path: bundle-${{ matrix.shard }}.json
+          retention-days: 1
+          if-no-files-found: warn
