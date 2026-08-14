@@ -1,0 +1,48 @@
+name: Temporary sharded d9 neatness completion
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-neat-shards-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 14
+      matrix:
+        include:
+          - {name: 16a, facets: 16, start: 1, end: 352789}
+          - {name: 16b, facets: 16, start: 352790, end: 705578}
+          - {name: 16c, facets: 16, start: 705579, end: 1058367}
+          - {name: 16d, facets: 16, start: 1058368, end: 1411156}
+          - {name: 16e, facets: 16, start: 1411157, end: 1763945}
+          - {name: 16f, facets: 16, start: 1763946, end: 2116734}
+          - {name: 16g, facets: 16, start: 2116735, end: 2469523}
+          - {name: 16h, facets: 16, start: 2469524, end: 2822309}
+          - {name: 17a, facets: 17, start: 1, end: 304875}
+          - {name: 17b, facets: 17, start: 304876, end: 609750}
+          - {name: 17c, facets: 17, start: 609751, end: 914625}
+          - {name: 17d, facets: 17, start: 914626, end: 1219500}
+          - {name: 17e, facets: 17, start: 1219501, end: 1524375}
+          - {name: 17f, facets: 17, start: 1524376, end: 1829247}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Scan shard
+        run: python neat_filter9_shard.py --facets ${{ matrix.facets }} --start ${{ matrix.start }} --end ${{ matrix.end }} --out neat9-${{ matrix.name }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neat9-${{ matrix.name }}
+          path: neat9-${{ matrix.name }}.json
+          retention-days: 3
+          if-no-files-found: warn
