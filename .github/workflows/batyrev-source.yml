@@ -1,0 +1,24 @@
+name: Temporary Higashitani source extraction
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-batyrev-source-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch arXiv source and print Proposition 2.3
+        run: |
+          set -euo pipefail
+          curl -L --retry 3 -o src.tar.gz https://export.arxiv.org/e-print/1503.06434
+          mkdir src
+          tar -xzf src.tar.gz -C src
+          f=$(grep -rl 'Proposition.*Bat91' src | head -1)
+          echo FILE=$f
+          grep -n -A55 -B5 'Bat91' "$f" | head -120
