@@ -1,0 +1,32 @@
+name: Temporary aggregate old exact d9 neatness logs
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-oldlog-aggregate-20260814
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Aggregate exact shard logs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python aggregate_old_neat_logs.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: old-neat-log-audit
+          path: old-neat-log-audit.json
+          retention-days: 3
+          if-no-files-found: warn
