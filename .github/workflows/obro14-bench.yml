@@ -29,7 +29,7 @@ jobs:
           from pathlib import Path
           p=Path('obro/smooth_Fanos.cpp')
           s=p.read_text()
-          s=s.replace('#include <numeric>', '#include <numeric>\n#include <cstdlib>')
+          s=s.replace('#include <numeric>', '#include <numeric>\n#include <algorithm>\n#include <cstdlib>')
           old='int d;'
           new='''int d;\nint target_vertices;\nint shard_id;\nint shard_count;\nlong long addpoint_calls = 0;\n\nbool first_vertex_in_shard(const vector<int>& v) {\n    unsigned long long h = 1469598103934665603ULL;\n    for (int x : v) { h ^= (unsigned long long)(x + 1000003); h *= 1099511628211ULL; }\n    return (int)(h % (unsigned long long)shard_count) == shard_id;\n}'''
           assert old in s
