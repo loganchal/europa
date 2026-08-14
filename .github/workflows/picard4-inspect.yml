@@ -1,0 +1,53 @@
+name: Temporary inspect Picard-4 classification data
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-picard4-inspect-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clone classification repository
+        run: git clone --depth 1 https://github.com/Hyeontae1112/toric_manifolds_with_Picard_number_4.git ext
+      - name: Summarize dimension-10 data and notebooks
+        run: |
+          python - <<'PY'
+          import ast,glob,json,os,re
+          p='ext/CSPLS/CSPLS_10_14'
+          lines=[x.strip() for x in open(p) if x.strip()]
+          print('CSPLS_10_14_LINES',len(lines))
+          lens=[]
+          for i,s in enumerate(lines):
+              try:a=ast.literal_eval(s);lens.append(len(a))
+              except Exception as e:print('PARSE_ERR',i,e)
+          print('FACET_COUNTS',sorted(set(lens)), 'MINMAX', (min(lens),max(lens)))
+          seeds=[]
+          for f in glob.glob('ext/Oscar_fanlike_seeds/K_*'):
+              m=re.search(r'K_(\d+)_(\d+)$',f)
+              if m:seeds.append((int(m.group(1)),int(m.group(2)),os.path.basename(f)))
+          print('SEEDS',len(seeds),sorted(seeds))
+          nbs=sorted(glob.glob('ext/fan-giving maps/*.ipynb'),key=lambda x:int(os.path.basename(x).split('.')[0]))
+          print('NOTEBOOKS',len(nbs),[os.path.basename(x) for x in nbs])
+          for f in nbs:
+              nb=json.load(open(f))
+              codes=[];outs=[]
+              for c in nb.get('cells',[]):
+                  if c.get('cell_type')=='code':
+                      src=''.join(c.get('source',[]))
+                      if any(k in src for k in ['Characteristic_Pair','initial_char','positive_map_solution','is_fangiving','subs(','print(','K_','J_construction','Wedge']):
+                          codes.append(src.replace('\n',' ')[:500])
+                      for o in c.get('outputs',[]):
+                          txt=''
+                          if 'text' in o:txt=''.join(o['text'])
+                          elif 'data' in o and 'text/plain' in o['data']:txt=''.join(o['data']['text/plain'])
+                          if txt.strip():outs.append(txt.strip()[:1000])
+              print('NB',os.path.basename(f),'CODES',len(codes),'OUTS',len(outs))
+              for x in codes[-3:]:print(' CODE',x)
+              for x in outs[-5:]:print(' OUT',x.replace('\n',' ')[:1000])
+          PY
