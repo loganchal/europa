@@ -1,0 +1,33 @@
+name: Temporary d10 off-fiber search
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-offfiber-20260814
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        raycap: [20,21,22,23]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Search smooth-Fano stellar subdivisions
+        run: python offfiber10.py --raycap ${{ matrix.raycap }} --seconds 1800 --seen-cap 50000 --out offfiber-${{ matrix.raycap }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offfiber-${{ matrix.raycap }}
+          path: offfiber-${{ matrix.raycap }}.json
+          retention-days: 3
+          if-no-files-found: warn
