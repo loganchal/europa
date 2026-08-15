@@ -18,7 +18,9 @@ def unpack_matrix(x):
    if k in x:return unpack_matrix(x[k])
   raise TypeError(('matrix wrapper',x))
  if not isinstance(x,list):raise TypeError(type(x))
- if x and isinstance(x[-1],dict) and set(x[-1])=={'cols'}:x=x[:-1]
+ # polymake JSON matrices/incidence matrices may append metadata objects
+ # such as {'cols': n, ...}; these are not matrix rows.
+ x=[z for z in x if not (isinstance(z,dict) and 'cols' in z)]
  return x
 
 def primitive_facet_normals(raw):
