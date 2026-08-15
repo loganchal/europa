@@ -1,4 +1,4 @@
-name: Temporary complete d6 star-Ewald scan
+name: Temporary targeted d6 star-Ewald seed recovery
 on:
   push:
     branches: [chatgpt-ewald-star6-polydb-20260815]
@@ -7,38 +7,17 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix:
-        include:
-          - {tag: 00, start: 0, end: 480}
-          - {tag: 01, start: 480, end: 960}
-          - {tag: 02, start: 960, end: 1440}
-          - {tag: 03, start: 1440, end: 1920}
-          - {tag: 04, start: 1920, end: 2400}
-          - {tag: 05, start: 2400, end: 2880}
-          - {tag: 06, start: 2880, end: 3360}
-          - {tag: 07, start: 3360, end: 3840}
-          - {tag: 08, start: 3840, end: 4320}
-          - {tag: 09, start: 4320, end: 4800}
-          - {tag: 10, start: 4800, end: 5280}
-          - {tag: 11, start: 5280, end: 5760}
-          - {tag: 12, start: 5760, end: 6240}
-          - {tag: 13, start: 6240, end: 6720}
-          - {tag: 14, start: 6720, end: 7200}
-          - {tag: 15, start: 7200, end: 7622}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: python -m pip install --disable-pip-version-check numpy requests
-      - run: python scan_star6_polydb.py --start ${{ matrix.start }} --end ${{ matrix.end }} --out star6-${{ matrix.tag }}.json
+      - run: python scan_star6_polydb.py --start 70 --end 71 --out star6-0070.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: star6-${{ matrix.tag }}
-          path: star6-${{ matrix.tag }}.json
+          name: star6-0070
+          path: star6-0070.json
           retention-days: 1
           if-no-files-found: warn
