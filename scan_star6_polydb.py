@@ -8,7 +8,7 @@ URL='https://polydb.org/rest/current/find/Polytopes/Lattice/SmoothReflexive'
 def inv_unimod(M):
  M=np.asarray(M,dtype=int)
  X=np.rint(np.linalg.inv(M.astype(float))).astype(int)
- if not np.array_equal(M@X,np.eye(D,dtype=int)): raise ValueError('non-unimodular facet')
+ if not np.array_equal(M@X,np.eye(D,dtype=int)): raise ValueError('non-unimodular cone')
  return X
 
 def unpack_matrix(x):
@@ -17,8 +17,6 @@ def unpack_matrix(x):
    if k in x:return unpack_matrix(x[k])
   raise TypeError(('matrix wrapper',x))
  if not isinstance(x,list):raise TypeError(type(x))
- # polymake serializes matrices with set/sparse rows as rows followed by
- # a final {"cols": n} dimension sentinel (Serializer.pm::generate_methods_for_matrix).
  if x and isinstance(x[-1],dict) and set(x[-1])=={'cols'}:
   x=x[:-1]
  return x
@@ -28,35 +26,45 @@ def fetch_page(skip):
  r=requests.get(URL,params=p,timeout=60);r.raise_for_status();return r.json()
 
 def scan(doc):
+ # PolyDB stores the smooth polytope itself. FACETS are homogeneous facet
+ # inequalities [1,a], while VERTICES_IN_FACETS is facet -> vertex incidence.
+ # The normal fan rays are the facet normals a (global sign is irrelevant to E),
+ # and each polytope vertex gives one maximal fan cone via its incident facets.
  V=np.asarray(unpack_matrix(doc['VERTICES']),dtype=int)
- if V.shape[1]==D+1 and np.all(V[:,0]==1):V=V[:,1:]
+ F=np.asarray(unpack_matrix(doc['FACETS']),dtype=int)
+ if F.ndim!=2 or F.shape[1]!=D+1:raise ValueError(('facet shape',F.shape))
+ R0=F[:,1:].astype(int)
  vif=doc.get('VERTICES_IN_FACETS')
  if vif is None:
-  F=np.asarray(unpack_matrix(doc['FACETS']),dtype=int)
-  if F.shape[1]==D+1:
-   H=np.column_stack([np.ones(len(V),dtype=int),V]); vals=F@H.T
-   vif=[np.flatnonzero(vals[i]==0).tolist() for i in range(len(F))]
-  else:raise ValueError('no incidence')
+  H=V if V.shape[1]==D+1 else np.column_stack([np.ones(len(V),dtype=int),V])
+  vals=F@H.T
+  vif=[np.flatnonzero(vals[i]==0).tolist() for i in range(len(F))]
  else:vif=unpack_matrix(vif)
  vif=[tuple(map(int,z)) for z in vif]
- if any(len(z)!=D for z in vif):raise ValueError(('not simplicial',doc['_id'],[len(z) for z in vif]))
- B=V[list(vif[0])]
+ nverts=len(V)
+ cones=[]
+ for j in range(nverts):
+  C=tuple(i for i,row in enumerate(vif) if j in row)
+  if len(C)!=D:raise ValueError(('not simple',doc['_id'],j,len(C),C))
+  cones.append(C)
+ cones=sorted(set(cones))
+ B=R0[list(cones[0])]
  X=inv_unimod(B)
- R=V@X
- if not np.array_equal(R[list(vif[0])],np.eye(D,dtype=int)):raise ValueError('basis normalization')
+ R=R0@X
+ if not np.array_equal(R[list(cones[0])],np.eye(D,dtype=int)):raise ValueError('basis normalization')
  vals=CUBE@R.T
  ok=np.max(np.abs(vals),axis=1)<=1
  E=CUBE[ok]; EV=vals[ok]
  faces=set()
- for F in vif:
-  for k in range(1,D+1):faces.update(itertools.combinations(F,k))
+ for C in cones:
+  for k in range(1,D+1):faces.update(itertools.combinations(C,k))
  bad=[]
  for I in faces:
   A=EV[:,I]
   good=np.any((np.sum(A==1,axis=1)==1)&np.all(A>=0,axis=1)&np.all(A<=1,axis=1))
   if not good:bad.append(I)
- return {'id':doc['_id'],'n_rays':len(R),'n_maxcones':len(vif),'E':len(E),'bad_faces':[list(x) for x in bad],
-         'normals':R.tolist() if bad else None,'maxcones':[list(x) for x in vif] if bad else None}
+ return {'id':doc['_id'],'n_rays':len(R),'n_maxcones':len(cones),'E':len(E),'bad_faces':[list(x) for x in bad],
+         'normals':R.tolist() if bad else None,'maxcones':[list(x) for x in cones] if bad else None}
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--start',type=int,required=True);ap.add_argument('--end',type=int,required=True);ap.add_argument('--out',required=True);a=ap.parse_args()
