@@ -1,4 +1,5 @@
 import argparse,itertools,json,time
+from fractions import Fraction
 import numpy as np,requests
 
 D=6
@@ -17,31 +18,35 @@ def unpack_matrix(x):
    if k in x:return unpack_matrix(x[k])
   raise TypeError(('matrix wrapper',x))
  if not isinstance(x,list):raise TypeError(type(x))
- if x and isinstance(x[-1],dict) and set(x[-1])=={'cols'}:
-  x=x[:-1]
+ if x and isinstance(x[-1],dict) and set(x[-1])=={'cols'}:x=x[:-1]
  return x
+
+def primitive_facet_normals(raw):
+ rows=unpack_matrix(raw); out=[]
+ for row in rows:
+  q=[Fraction(str(z)) for z in row]
+  if len(q)!=D+1:raise ValueError(('facet row length',len(q),row))
+  b=q[0]
+  if b==0:raise ValueError(('zero facet constant',row))
+  a=[z/b for z in q[1:]]
+  if any(z.denominator!=1 for z in a):raise ValueError(('nonintegral normalized facet',row,a))
+  v=[int(z) for z in a]
+  g=0
+  for z in v:g=np.gcd(g,abs(z))
+  if g!=1:raise ValueError(('nonprimitive normalized facet',row,v,g))
+  out.append(v)
+ return np.asarray(out,dtype=int)
 
 def fetch_page(skip):
  p={'query':json.dumps({'DIM':D},separators=(',',':')),'limit':10,'skip':skip,'sort':json.dumps({'_id':1},separators=(',',':'))}
  r=requests.get(URL,params=p,timeout=60);r.raise_for_status();return r.json()
 
 def scan(doc):
- # PolyDB stores the smooth polytope itself. FACETS are homogeneous facet
- # inequalities [1,a], while VERTICES_IN_FACETS is facet -> vertex incidence.
- # The normal fan rays are the facet normals a (global sign is irrelevant to E),
- # and each polytope vertex gives one maximal fan cone via its incident facets.
- V=np.asarray(unpack_matrix(doc['VERTICES']),dtype=int)
- F=np.asarray(unpack_matrix(doc['FACETS']),dtype=int)
- if F.ndim!=2 or F.shape[1]!=D+1:raise ValueError(('facet shape',F.shape))
- R0=F[:,1:].astype(int)
+ R0=primitive_facet_normals(doc['FACETS'])
  vif=doc.get('VERTICES_IN_FACETS')
- if vif is None:
-  H=V if V.shape[1]==D+1 else np.column_stack([np.ones(len(V),dtype=int),V])
-  vals=F@H.T
-  vif=[np.flatnonzero(vals[i]==0).tolist() for i in range(len(F))]
- else:vif=unpack_matrix(vif)
- vif=[tuple(map(int,z)) for z in vif]
- nverts=len(V)
+ if vif is None:raise ValueError('VERTICES_IN_FACETS missing')
+ vif=[tuple(map(int,z)) for z in unpack_matrix(vif)]
+ nverts=len(unpack_matrix(doc['VERTICES']))
  cones=[]
  for j in range(nverts):
   C=tuple(i for i,row in enumerate(vif) if j in row)
@@ -72,13 +77,15 @@ def main():
  for s in range(a.start,a.end,10):
   try:docs=fetch_page(s)
   except Exception as e:errors.append({'skip':s,'error':repr(e)});continue
-  for doc in docs[:max(0,a.end-s)]:
+  take=max(0,a.end-s)
+  for doc in docs[:take]:
    n+=1;seen.append(doc.get('_id'))
    try:
     q=scan(doc)
     if q['bad_faces']:
-     fails.append(q);print('STARFAIL',json.dumps({k:v for k,v in q.items() if k not in ('normals','maxcones')},separators=(',',':')),flush=True)
-   except Exception as e:errors.append({'id':doc.get('_id'),'error':repr(e)})
+     fails.append(q);print('STARFAIL',json.dumps(q,separators=(',',':')),flush=True)
+   except Exception as e:
+    errors.append({'id':doc.get('_id'),'error':repr(e)});print('ERROR',doc.get('_id'),repr(e),flush=True)
   if (s-a.start)%100==0:print('PROG',s,n,len(fails),len(errors),flush=True)
  out={'start':a.start,'end':a.end,'scanned':n,'first_id':seen[0] if seen else None,'last_id':seen[-1] if seen else None,'fail_count':len(fails),'fails':fails,'errors':errors,'elapsed':time.time()-t}
  open(a.out,'w').write(json.dumps(out,separators=(',',':')))
