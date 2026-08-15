@@ -1,0 +1,39 @@
+name: Temporary direct Ewald Batyrev retry
+on:
+  push:
+    branches: [chatgpt-ewald-batyrev-direct-retry-20260815]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [11,15,18,19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - name: Retry shard
+        run: |
+          python - <<'PY' > bounds.txt
+          import os
+          s=int(os.environ['SHARD']);N=1510;K=20
+          print((N*s)//K,(N*(s+1))//K)
+          PY
+          read A B < bounds.txt
+          python scan_batyrev_ewald.py --start $A --end $B --out direct-${{ matrix.shard }}.json
+        env:
+          SHARD: ${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: retry-direct-${{ matrix.shard }}
+          path: direct-${{ matrix.shard }}.json
+          retention-days: 1
+          if-no-files-found: warn
