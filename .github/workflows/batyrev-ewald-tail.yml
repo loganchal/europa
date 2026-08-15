@@ -1,0 +1,37 @@
+name: Temporary split Batyrev Ewald tails
+on:
+  push:
+    branches: [chatgpt-ewald-batyrev-tail-20260815]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        include:
+          - {tag: 11a, start: 880, end: 890}
+          - {tag: 11b, start: 890, end: 900}
+          - {tag: 11c, start: 900, end: 906}
+          - {tag: 15a, start: 1202, end: 1208}
+          - {tag: 19a, start: 1484, end: 1494}
+          - {tag: 19b, start: 1494, end: 1504}
+          - {tag: 19c, start: 1504, end: 1510}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - name: Scan exact tail range
+        run: python scan_batyrev_ewald.py --start ${{ matrix.start }} --end ${{ matrix.end }} --out tail-${{ matrix.tag }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: batyrev-tail-${{ matrix.tag }}
+          path: tail-${{ matrix.tag }}.json
+          retention-days: 1
+          if-no-files-found: warn
