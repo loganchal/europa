@@ -19,7 +19,7 @@ jobs:
           for run in 31788058450 31855913597; do
             gh api --paginate "repos/${{ github.repository }}/actions/runs/$run/artifacts?per_page=100" --jq '.artifacts[] | select(.expired==false) | [.id,.name] | @tsv' > /tmp/list.tsv
             while IFS=$'\t' read -r id name; do
-              case "$name" in exact16-*|exact17-*) ;;& *) continue;; esac
+              case "$name" in exact16-*|exact17-*) ;; *) continue;; esac
               gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > "/tmp/a/$id.zip"
               unzip -pq "/tmp/a/$id.zip" '*.json' >> all.ndjson || true
               printf '\n' >> all.ndjson
@@ -28,7 +28,6 @@ jobs:
           python - <<'PY'
           import json
           rows=[json.loads(x) for x in open('all.ndjson') if x.strip()]
-          # Keep only completed coverage: original mod16 success residues and split mod32 heavy residues; facet17 all.
           ok16_old={2,3,4,6,10,11,12,15}
           heavy32={0,1,5,7,8,9,13,14,16,17,21,23,24,25,29,30}
           use=[]
