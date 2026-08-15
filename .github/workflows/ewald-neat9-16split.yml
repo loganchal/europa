@@ -1,0 +1,35 @@
+name: Temporary exact d9 facet16 split
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-neat9-16split-20260815
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  exact16:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0,1,5,7,8,9,13,14,16,17,21,23,24,25,29,30]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy scipy
+      - name: Exact neatness check
+        run: python neat_exact9.py --facets 16 --shard ${{ matrix.shard }} --shards 32 --maxbox 200000 --out exact16-32-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact16-32-${{ matrix.shard }}
+          path: exact16-32-${{ matrix.shard }}.json
+          retention-days: 1
+          if-no-files-found: warn
