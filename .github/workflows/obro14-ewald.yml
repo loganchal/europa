@@ -1,0 +1,58 @@
+name: Temporary full Obro d10 14-ray Ewald scan
+
+on:
+  push:
+    branches: [chatgpt-ewald-obro14-ewald-20260815]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127]
+    env:
+      TARGET: '14'
+      SHARD: ${{ matrix.shard }}
+      SHARDS: '128'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy
+      - name: Fetch and patch Obro generator
+        run: |
+          git clone --depth 1 https://github.com/rohansjoshi/Obro-SFP.git obro
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('obro/smooth_Fanos.cpp');s=p.read_text()
+          s=s.replace('#include <numeric>', '#include <numeric>\n#include <algorithm>\n#include <cstdlib>')
+          s=s.replace('int d;', '''int d;\nint target_vertices;\nint shard_id;\nint shard_count;\nlong long addpoint_calls = 0;\n\nbool first_vertex_in_shard(const vector<int>& v) {\n    unsigned long long h = 1469598103934665603ULL;\n    for (int x : v) { h ^= (unsigned long long)(x + 1000003); h *= 1099511628211ULL; }\n    return (int)(h % (unsigned long long)shard_count) == shard_id;\n}''',1)
+          s=s.replace('''void addpoint() {\n    // Compute the sum of the vertices''','''void addpoint() {\n    ++addpoint_calls;\n    if (addpoint_calls % 1000000LL == 0) cerr << "PROGRESS shard=" << shard_id << " calls=" << addpoint_calls << " size=" << vertices.size() << endl;\n    // Compute the sum of the vertices''',1)
+          s=s.replace('''if (conv_is_fano() && it_is_new(sum_vertices))\n        output_vertices();''','''if ((int)vertices.size() == target_vertices && conv_is_fano() && it_is_new(sum_vertices))\n        output_vertices();''',1)
+          s=s.replace('''remove_facets(number_of_facets);''','''remove_facets(number_of_facets);\n    if ((int)vertices.size() >= target_vertices) return;''',1)
+          s=s.replace('''if (checksubset() && compare_representation(vertices, false) != 1)\n                addpoint();''','''if ((int)vertices.size() <= target_vertices && checksubset() && compare_representation(vertices, false) != 1) {\n                if ((int)vertices.size() != d + 1 || first_vertex_in_shard(new_vertex)) addpoint();\n            }''',1)
+          s=s.replace('if (st.size() != 1)', 'if (st.size() < 1 || st.size() > 2)',1)
+          s=s.replace('''int d_char = st[0];\n    d = d_char - 48;''','''int d_char = st[0];\n    d = stoi(st);\n    target_vertices = atoi(getenv("TARGET"));\n    shard_id = atoi(getenv("SHARD"));\n    shard_count = atoi(getenv("SHARDS"));''',1)
+          marker='''    // Final output\n    msg << "Construction finished!"'''
+          s=s.replace(marker,'''    // Final output\n    cerr << "DONE shard=" << shard_id << " calls=" << addpoint_calls << " outputs=" << number_of_equivalence_classes[target_vertices] << endl;\n    msg << "Construction finished!"''',1)
+          p.write_text(s)
+          PY
+          g++ -O3 -std=c++17 obro/smooth_Fanos.cpp -o sfp14
+      - name: Generate exact 14-ray classes
+        run: /usr/bin/time -v ./sfp14 10 2>&1 | tee generator-${SHARD}.log
+      - name: Test ordinary Ewald
+        run: python scan_obro14_ewald.py --input fanovertd1 --shard ${SHARD} --out result-${SHARD}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: obro14-ewald-${{ matrix.shard }}
+          path: result-${{ matrix.shard }}.json
+          retention-days: 1
+          if-no-files-found: warn
