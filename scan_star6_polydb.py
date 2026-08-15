@@ -12,7 +12,6 @@ def inv_unimod(M):
  return X
 
 def unpack_matrix(x):
- # polyDB currently returns plain nested arrays; tolerate polymake wrapper objects.
  if isinstance(x,list): return x
  if isinstance(x,dict):
   for k in ('data','value','dense','matrix'):
@@ -56,12 +55,17 @@ def scan(doc):
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--start',type=int,required=True);ap.add_argument('--end',type=int,required=True);ap.add_argument('--out',required=True);a=ap.parse_args()
- t=time.time();fails=[];errors=[];seen=[];n=0
+ t=time.time();fails=[];errors=[];seen=[];n=0;debugged=False
  for s in range(a.start,a.end,10):
   try:docs=fetch_page(s)
   except Exception as e:errors.append({'skip':s,'error':repr(e)});continue
   for doc in docs[:max(0,a.end-s)]:
    n+=1;seen.append(doc.get('_id'))
+   if not debugged:
+    print('RAW_VERTICES',type(doc.get('VERTICES')).__name__,repr(doc.get('VERTICES'))[:3000],flush=True)
+    print('RAW_VIF',type(doc.get('VERTICES_IN_FACETS')).__name__,repr(doc.get('VERTICES_IN_FACETS'))[:3000],flush=True)
+    print('RAW_FACETS',type(doc.get('FACETS')).__name__,repr(doc.get('FACETS'))[:3000],flush=True)
+    debugged=True
    try:
     q=scan(doc)
     if q['bad_faces']:
