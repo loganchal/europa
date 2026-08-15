@@ -1,0 +1,55 @@
+name: Temporary Ewald result aggregation
+on:
+  push:
+    branches: [chatgpt-ewald-aggregate-20260815]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Aggregate completed scan artifacts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          print('starting aggregate')
+          PY
+          mkdir -p /tmp/a
+          agg_run () {
+            run=$1; tag=$2
+            rm -rf /tmp/a/* all.ndjson
+            gh api --paginate "repos/${{ github.repository }}/actions/runs/$run/artifacts?per_page=100" --jq '.artifacts[] | select(.expired==false) | [.id,.name] | @tsv' > /tmp/list.tsv
+            while IFS=$'\t' read -r id name; do
+              [ -z "$id" ] && continue
+              gh api "repos/${{ github.repository }}/actions/artifacts/$id/zip" > "/tmp/a/$id.zip"
+              unzip -pq "/tmp/a/$id.zip" '*.json' >> all.ndjson || true
+              printf '\n' >> all.ndjson
+            done < /tmp/list.tsv
+            TAG="$tag" python - <<'PY'
+          import json,os
+          rows=[]
+          for ln in open('all.ndjson'):
+              ln=ln.strip()
+              if not ln: continue
+              try: rows.append(json.loads(ln))
+              except Exception as e: print('PARSEERR',e,ln[:100])
+          tag=os.environ['TAG']
+          out={'tag':tag,'artifacts':len(rows)}
+          if tag=='splitting':
+              out.update(selected=sum(r.get('selected',0) for r in rows), fano=sum(r.get('fano',0) for r in rows), positive=sum(r.get('positive',0) for r in rows), rankbad=sum(len(r.get('rankbad',[])) for r in rows), alarms=sum(len(r.get('alarms',[])) for r in rows), minE=min((r.get('minE',[10**9])[0] for r in rows),default=None))
+              bad=[x for r in rows for x in r.get('rankbad',[])]; als=[x for r in rows for x in r.get('alarms',[])]
+          elif tag=='batyrev':
+              out.update(parents=sum(r.get('parents',0) for r in rows), children=sum(r.get('children',0) for r in rows), preserved=sum(r.get('preserved',0) for r in rows), searched=sum(r.get('searched',0) for r in rows), errors=sum(r.get('errors',0) for r in rows), rankbad=sum(len(r.get('rankbad',[])) for r in rows), alarms=sum(len(r.get('alarms',[])) for r in rows), minE=min((r.get('minE',[10**9])[0] for r in rows),default=None), ranges=sorted((r.get('start'),r.get('end')) for r in rows))
+              bad=[x for r in rows for x in r.get('rankbad',[])]; als=[x for r in rows for x in r.get('alarms',[])]
+          else:
+              bad=[];als=[]
+          print('AGG',json.dumps(out,separators=(',',':')))
+          for x in bad: print('RANKBAD',json.dumps(x,separators=(',',':')))
+          for x in als[:50]: print('ALARM',json.dumps(x,separators=(',',':')))
+          PY
+          }
+          agg_run 31791569534 splitting
+          agg_run 31789894920 batyrev
