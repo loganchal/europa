@@ -12,11 +12,16 @@ def inv_unimod(M):
  return X
 
 def unpack_matrix(x):
- if isinstance(x,list): return x
  if isinstance(x,dict):
   for k in ('data','value','dense','matrix'):
    if k in x:return unpack_matrix(x[k])
- raise TypeError(type(x))
+  raise TypeError(('matrix wrapper',x))
+ if not isinstance(x,list):raise TypeError(type(x))
+ # polymake serializes matrices with set/sparse rows as rows followed by
+ # a final {"cols": n} dimension sentinel (Serializer.pm::generate_methods_for_matrix).
+ if x and isinstance(x[-1],dict) and set(x[-1])=={'cols'}:
+  x=x[:-1]
+ return x
 
 def fetch_page(skip):
  p={'query':json.dumps({'DIM':D},separators=(',',':')),'limit':10,'skip':skip,'sort':json.dumps({'_id':1},separators=(',',':'))}
@@ -55,17 +60,12 @@ def scan(doc):
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--start',type=int,required=True);ap.add_argument('--end',type=int,required=True);ap.add_argument('--out',required=True);a=ap.parse_args()
- t=time.time();fails=[];errors=[];seen=[];n=0;debugged=False
+ t=time.time();fails=[];errors=[];seen=[];n=0
  for s in range(a.start,a.end,10):
   try:docs=fetch_page(s)
   except Exception as e:errors.append({'skip':s,'error':repr(e)});continue
   for doc in docs[:max(0,a.end-s)]:
    n+=1;seen.append(doc.get('_id'))
-   if not debugged:
-    print('RAW_VERTICES',type(doc.get('VERTICES')).__name__,repr(doc.get('VERTICES'))[:3000],flush=True)
-    print('RAW_VIF',type(doc.get('VERTICES_IN_FACETS')).__name__,repr(doc.get('VERTICES_IN_FACETS'))[:3000],flush=True)
-    print('RAW_FACETS',type(doc.get('FACETS')).__name__,repr(doc.get('FACETS'))[:3000],flush=True)
-    debugged=True
    try:
     q=scan(doc)
     if q['bad_faces']:
