@@ -1,0 +1,58 @@
+name: Temporary Obro d10 14-ray rescue
+
+on:
+  push:
+    branches: [chatgpt-ewald-obro14-rescue-20260815]
+
+permissions:
+  contents: read
+
+jobs:
+  rescue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: [1,5,7,9,11,13,17,19,21,25,29,33,37,39,41,43,45,49,51,53,57,61,65,69,71,73,75,77,81,83,85,89,93,97,101,103,105,107,109,113,115,117,121,125]
+    env:
+      TARGET: '14'
+      SHARD: ${{ matrix.shard }}
+      SHARDS: '128'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and patch Obro generator
+        run: |
+          git clone --depth 1 https://github.com/rohansjoshi/Obro-SFP.git obro
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('obro/smooth_Fanos.cpp')
+          s=p.read_text()
+          s=s.replace('#include <numeric>', '#include <numeric>\n#include <algorithm>\n#include <cstdlib>')
+          s=s.replace('int d;', '''int d;\nint target_vertices;\nint shard_id;\nint shard_count;\nlong long addpoint_calls = 0;\n\nbool first_vertex_in_shard(const vector<int>& v) {\n    unsigned long long h = 1469598103934665603ULL;\n    for (int x : v) { h ^= (unsigned long long)(x + 1000003); h *= 1099511628211ULL; }\n    return (int)(h % (unsigned long long)shard_count) == shard_id;\n}''',1)
+          s=s.replace('''void addpoint() {\n    // Compute the sum of the vertices''','''void addpoint() {\n    ++addpoint_calls;\n    if (addpoint_calls % 1000000LL == 0) cerr << "PROGRESS shard=" << shard_id << " calls=" << addpoint_calls << " size=" << vertices.size() << endl;\n    // Compute the sum of the vertices''',1)
+          s=s.replace('''if (conv_is_fano() && it_is_new(sum_vertices))\n        output_vertices();''','''if ((int)vertices.size() == target_vertices && conv_is_fano() && it_is_new(sum_vertices))\n        output_vertices();''',1)
+          s=s.replace('''remove_facets(number_of_facets);''','''remove_facets(number_of_facets);\n    if ((int)vertices.size() >= target_vertices) return;''',1)
+          s=s.replace('''if (checksubset() && compare_representation(vertices, false) != 1)\n                addpoint();''','''if ((int)vertices.size() <= target_vertices && checksubset() && compare_representation(vertices, false) != 1) {\n                if ((int)vertices.size() != d + 1 || first_vertex_in_shard(new_vertex)) addpoint();\n            }''',1)
+          s=s.replace('if (st.size() != 1)', 'if (st.size() < 1 || st.size() > 2)',1)
+          s=s.replace('''int d_char = st[0];\n    d = d_char - 48;''','''int d_char = st[0];\n    d = stoi(st);\n    target_vertices = atoi(getenv("TARGET"));\n    shard_id = atoi(getenv("SHARD"));\n    shard_count = atoi(getenv("SHARDS"));''',1)
+          marker='''    // Final output\n    msg << "Construction finished!"'''
+          s=s.replace(marker,'''    // Final output\n    cerr << "DONE shard=" << shard_id << " calls=" << addpoint_calls << " outputs=" << number_of_equivalence_classes[target_vertices] << endl;\n    msg << "Construction finished!"''',1)
+          p.write_text(s)
+          PY
+          g++ -O3 -std=c++17 obro/smooth_Fanos.cpp -o sfp14
+      - name: Run restricted generator
+        run: |
+          /usr/bin/time -v ./sfp14 10 2>&1 | tee run-${SHARD}.log
+          grep -E 'PROGRESS|DONE|Construction finished|with 14 vertices' run-${SHARD}.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: obro14-rescue-${{ matrix.shard }}
+          path: |
+            run-${SHARD}.log
+            fanovertd1
+            msgd1
+          retention-days: 1
+          if-no-files-found: warn
