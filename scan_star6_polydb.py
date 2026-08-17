@@ -19,9 +19,16 @@ def unpack_matrix(x):
   raise TypeError(('matrix wrapper',x))
  if not isinstance(x,list):raise TypeError(type(x))
  # polymake JSON matrices/incidence matrices may append metadata objects
- # such as {'cols': n, ...}; these are not matrix rows.
- x=[z for z in x if not (isinstance(z,dict) and 'cols' in z)]
- return x
+ # or metadata rows such as ['cols', n].
+ out=[]
+ for z in x:
+  if isinstance(z,dict):
+   # sparse/incidence metadata, never a matrix row
+   if any(k in z for k in ('cols','rows','dim','type')):continue
+  if isinstance(z,(list,tuple)) and z and isinstance(z[0],str) and z[0] in ('cols','rows','dim','type'):
+   continue
+  out.append(z)
+ return out
 
 def primitive_facet_normals(raw):
  rows=unpack_matrix(raw); out=[]
@@ -39,6 +46,18 @@ def primitive_facet_normals(raw):
   out.append(v)
  return np.asarray(out,dtype=int)
 
+def incidence_rows(raw):
+ rows=unpack_matrix(raw);out=[]
+ for row in rows:
+  if isinstance(row,dict):
+   # tolerate any residual metadata wrapper but reject data-looking dicts
+   if any(k in row for k in ('cols','rows','dim','type')):continue
+   raise TypeError(('unexpected incidence dict',row))
+  if isinstance(row,(list,tuple)) and row and isinstance(row[0],str):
+   if row[0] in ('cols','rows','dim','type'):continue
+  out.append(tuple(int(z) for z in row))
+ return out
+
 def fetch_page(skip):
  p={'query':json.dumps({'DIM':D},separators=(',',':')),'limit':10,'skip':skip,'sort':json.dumps({'_id':1},separators=(',',':'))}
  r=requests.get(URL,params=p,timeout=60);r.raise_for_status();return r.json()
@@ -47,12 +66,12 @@ def scan(doc):
  R0=primitive_facet_normals(doc['FACETS'])
  vif=doc.get('VERTICES_IN_FACETS')
  if vif is None:raise ValueError('VERTICES_IN_FACETS missing')
- vif=[tuple(map(int,z)) for z in unpack_matrix(vif)]
+ vif=incidence_rows(vif)
  nverts=len(unpack_matrix(doc['VERTICES']))
  cones=[]
  for j in range(nverts):
   C=tuple(i for i,row in enumerate(vif) if j in row)
-  if len(C)!=D:raise ValueError(('not simple',doc['_id'],j,len(C),C))
+  if len(C)!=D:raise ValueError(('not simple',doc['_id'],j,len(C),C,'vif_sample',vif[:3]))
   cones.append(C)
  cones=sorted(set(cones))
  B=R0[list(cones[0])]
