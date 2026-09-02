@@ -1,0 +1,31 @@
+name: Inspect dimension-9 classification archives
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - .github/workflows/ewald-d9-inspect.yml
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect archive sizes and format
+        shell: bash
+        run: |
+          set -euxo pipefail
+          base=https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9
+          for n in $(seq 10 26); do
+            url="$base/fv-09-${n}p.gz"
+            printf '%s ' "$n"
+            curl -L --fail --retry 3 -sS -o /dev/null -w 'bytes=%{size_download} code=%{http_code}\n' "$url"
+          done
+          curl -L --fail --retry 3 -sS "$base/fv-09-10p.gz" -o /tmp/sample.gz
+          echo '--- gzip metadata ---'
+          gzip -l /tmp/sample.gz
+          echo '--- first 20 decompressed lines ---'
+          gzip -cd /tmp/sample.gz | head -n 20 || true
+          echo '--- line and byte counts ---'
+          gzip -cd /tmp/sample.gz | wc -lc
