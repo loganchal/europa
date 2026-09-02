@@ -28,7 +28,6 @@ def main() -> None:
         directConnection=True,
     )
     coll = client["polydb"][COLLECTION]
-    indexes = {name: dict(spec) for name, spec in coll.index_information().items()}
     facet_values = sorted(coll.distinct("N_FACETS", {"DIM": 9}))
     groups = []
     for nf in facet_values:
@@ -44,6 +43,7 @@ def main() -> None:
             "last_id": last["_id"] if last else None,
             "query_seconds": time.time() - t0,
         })
+        print(f"N_FACETS={nf}: {count}", flush=True)
 
     sample_n = 10000
     query = {"DIM": 9}
@@ -62,14 +62,16 @@ def main() -> None:
     leading_constants = set()
     initial_standard_count = 0
     malformed = []
+    expected = {tuple(-1 if i == j else 0 for j in range(9)) for i in range(9)}
     for doc in cursor:
         rows += 1
         bytes_bson += len(BSON.encode(doc))
         facets = doc["FACETS"]
         normals = [tuple(int(a) for a in row[1:]) for row in facets]
         leading_constants.update(int(row[0]) for row in facets)
-        normal_abs_max = max(normal_abs_max, *(abs(a) for u in normals for a in u))
-        expected = {tuple(-1 if i == j else 0 for j in range(9)) for i in range(9)}
+        for u in normals:
+            for a in u:
+                normal_abs_max = max(normal_abs_max, abs(a))
         if expected.issubset(set(normals)):
             initial_standard_count += 1
         elif len(malformed) < 20:
@@ -78,7 +80,6 @@ def main() -> None:
 
     result = {
         "dimension": 9,
-        "indexes": indexes,
         "n_facets_groups": groups,
         "group_count_sum": sum(g["count"] for g in groups),
         "sample": {
