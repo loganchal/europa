@@ -1,0 +1,101 @@
+name: Search dimension-9 classification for non-neat fans
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - .github/workflows/ewald-d9-neat-sample.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONHASHSEED: '0'
+
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      max-parallel: 17
+      matrix:
+        facets: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install search dependencies
+        run: python -m pip install --disable-pip-version-check numpy scipy sympy
+      - name: Download classification shard
+        run: |
+          curl -L --fail --retry 5 --retry-delay 2 -sS \
+            "https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-${{ matrix.facets }}p.gz" \
+            -o "/tmp/fv-09-${{ matrix.facets }}p.gz"
+          gzip -t "/tmp/fv-09-${{ matrix.facets }}p.gz"
+      - name: Search deterministic sample
+        run: |
+          python ewald-search/neat_d9.py \
+            --input "/tmp/fv-09-${{ matrix.facets }}p.gz" \
+            --facets "${{ matrix.facets }}" \
+            --output "ewald-search/neat-results/${{ matrix.facets }}" \
+            --sample-count 2000 \
+            --max-box 2000000
+      - name: Upload shard results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neat-d9-${{ matrix.facets }}p
+          path: ewald-search/neat-results/${{ matrix.facets }}
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    needs: search
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: neat-d9-*p
+          path: /tmp/shards
+      - name: Aggregate
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          root=Path('/tmp/shards'); out=Path('/tmp/combined'); out.mkdir()
+          summaries=[json.loads(p.read_text()) for p in root.rglob('summary.json')]
+          counters=[]; hard=[]; errors=[]
+          for p in root.rglob('COUNTEREXAMPLE.json'):
+              x=json.loads(p.read_text()); x['_path']=str(p); counters.append(x)
+              shutil.copy2(p,out/f'{p.parent.name}-COUNTEREXAMPLE.json')
+          for p in root.rglob('HARD-*.json'):
+              x=json.loads(p.read_text()); x['_path']=str(p); hard.append(x)
+          for p in root.rglob('ERROR.json'):
+              errors.append(json.loads(p.read_text()))
+          value={
+              'summary_count':len(summaries),
+              'records_sampled':sum(x['records_sampled'] for x in summaries),
+              'nontrivial_displacement_count':sum(x['nontrivial_displacement_count'] for x in summaries),
+              'maximum_feasible_displacements':max((x['maximum_feasible_displacements'] for x in summaries),default=0),
+              'hard_count_reported':sum(x['hard_count'] for x in summaries),
+              'hard_records':hard,
+              'counterexamples':counters,
+              'errors':errors,
+              'shards':sorted(summaries,key=lambda x:x['facets']),
+          }
+          (out/'combined-summary.json').write_text(json.dumps(value,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({k:value[k] for k in ('summary_count','records_sampled','nontrivial_displacement_count','maximum_feasible_displacements','hard_count_reported')},sort_keys=True))
+          print('counterexamples',len(counters),'errors',len(errors))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neat-d9-combined
+          path: /tmp/combined
+          if-no-files-found: error
+          retention-days: 30
