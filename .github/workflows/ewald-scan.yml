@@ -25,6 +25,11 @@ jobs:
           git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git magma
           git -C magma sparse-checkout set libs/data/polytopes/smoothfano8
 
+      - name: Install exact-integer header dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-dev
+
       - name: Compile independent exact scanner
         run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_basis_scan.cpp -o ewald_basis_scan
 
