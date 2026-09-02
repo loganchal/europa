@@ -8,6 +8,7 @@ on:
       - .github/workflows/ewald-neat-prefilter.yml
       - tools/polydb_binary_stream.py
       - tools/ewald_neat_prefilter.cpp
+      - tools/check_neat_candidates.py
 
 permissions:
   contents: read
@@ -25,8 +26,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install MongoDB client
-        run: python -m pip install --disable-pip-version-check pymongo
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pymongo numpy scipy
 
       - name: Compile exact neatness prefilter
         run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_neat_prefilter.cpp -o ewald_neat_prefilter
@@ -46,11 +47,21 @@ jobs:
             --heuristic-trials 500 \
             --retain 200
 
-      - name: Upload exact prefilter result
+      - name: Check every no-lift displacement against the full normal fan
+        run: |
+          python tools/check_neat_candidates.py \
+            neat-pilot.json neat-pilot-typecheck.json \
+            --workers 2 \
+            --max-box 1000000 \
+            --retain 200
+
+      - name: Upload exact prefilter and type-cone results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-neatness-pilot
-          path: neat-pilot.json
+          name: ewald-neatness-pilot-typechecked
+          path: |
+            neat-pilot.json
+            neat-pilot-typecheck.json
           if-no-files-found: warn
           retention-days: 7
