@@ -1,0 +1,37 @@
+name: Smoke-test dimension-9 Ewald shards
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - .github/workflows/ewald-d9-smoke.yml
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        facets: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy sympy
+      - name: Download shard
+        run: |
+          curl -L --fail --retry 3 -sS \
+            "https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-${{ matrix.facets }}p.gz" \
+            -o "/tmp/fv-09-${{ matrix.facets }}p.gz"
+      - name: Check first records
+        run: |
+          python ewald-search/census_d9.py \
+            --input "/tmp/fv-09-${{ matrix.facets }}p.gz" \
+            --facets "${{ matrix.facets }}" \
+            --output "/tmp/out-${{ matrix.facets }}" \
+            --max-polytopes 100 \
+            --attempts 64
