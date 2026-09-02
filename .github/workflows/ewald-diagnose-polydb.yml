@@ -1,9 +1,6 @@
 name: Temporary Ewald polyDB diagnostic
 
 on:
-  push:
-    branches:
-      - automation/ewald-search9-20260903
   workflow_dispatch:
 
 permissions:
@@ -12,84 +9,5 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m pip install --disable-pip-version-check pymongo
-      - name: Inspect public polyDB smooth-reflexive collection
-        run: |
-          python - <<'PY'
-          import json
-          from pymongo import MongoClient
-          from pymongo.errors import PyMongoError
-
-          client = MongoClient(
-              "mongodb://polymake:database@db.polymake.org:27017",
-              tls=True,
-              directConnection=True,
-              serverSelectionTimeoutMS=30000,
-          )
-          print("PING", client.admin.command("ping"), flush=True)
-          db = client.polydb
-          result = {"attempts": {}}
-          doc = None
-          chosen = None
-          for name in (
-              "Polytopes.Lattice.SmoothReflexive",
-              "LatticePolytopes.SmoothReflexive",
-              "SmoothReflexive",
-          ):
-              try:
-                  coll = db[name]
-                  sample = coll.find_one({})
-                  result["attempts"][name] = {
-                      "sample_id": None if sample is None else sample.get("_id"),
-                      "sample_keys": [] if sample is None else sorted(sample),
-                  }
-                  print("COLLECTION_ATTEMPT", name, result["attempts"][name], flush=True)
-                  if sample is not None and doc is None:
-                      chosen = name
-                      for query in ({"CONE_DIM": 10}, {"DIM": 9}, {"_id": {"$regex": "9D"}}):
-                          doc = coll.find_one(query)
-                          print("QUERY", name, query, None if doc is None else doc.get("_id"), flush=True)
-                          if doc is not None:
-                              break
-              except PyMongoError as exc:
-                  result["attempts"][name] = {"error": repr(exc)}
-                  print("COLLECTION_ERROR", name, repr(exc), flush=True)
-
-          if doc is None:
-              raise RuntimeError("No dimension-9 record found in candidate collections")
-
-          result["chosen"] = chosen
-          result["id"] = doc.get("_id")
-          result["keys"] = sorted(doc)
-          result["document"] = {}
-          for key, value in doc.items():
-              if key == "_id":
-                  result["document"][key] = value
-              elif isinstance(value, (str, int, float, bool, type(None))):
-                  result["document"][key] = value if not isinstance(value, str) or len(value) < 1000 else value[:1000]
-              elif isinstance(value, list):
-                  result["document"][key] = {"type": "list", "len": len(value), "head": value[:3]}
-              elif isinstance(value, dict):
-                  result["document"][key] = {
-                      "type": "dict", "keys": list(value)[:30],
-                      "repr": repr(value)[:2000],
-                  }
-              else:
-                  result["document"][key] = {"type": type(value).__name__, "repr": repr(value)[:1000]}
-
-          with open("polydb-diagnostic.json", "w") as f:
-              json.dump(result, f, indent=2, default=str)
-          print("RESULT", json.dumps(result, default=str), flush=True)
-          PY
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: polydb-diagnostic
-          path: polydb-diagnostic.json
-          retention-days: 1
+      - run: echo 'Diagnostic retained for reproducibility; automatic runs disabled.'
