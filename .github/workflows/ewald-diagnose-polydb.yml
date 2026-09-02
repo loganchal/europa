@@ -24,6 +24,7 @@ jobs:
           python - <<'PY'
           import json
           from pymongo import MongoClient
+          from pymongo.errors import PyMongoError
 
           client = MongoClient(
               "mongodb://polymake:database@db.polymake.org:27017",
@@ -33,31 +34,58 @@ jobs:
           )
           print("PING", client.admin.command("ping"), flush=True)
           db = client.polydb
-          names = [n for n in db.list_collection_names() if "SmoothReflexive" in n]
-          print("COLLECTIONS", names, flush=True)
-          coll = db["Polytopes.Lattice.SmoothReflexive"]
-          for cone_dim in (9, 10):
-              print("COUNT", cone_dim, coll.count_documents({"CONE_DIM": cone_dim}), flush=True)
-          doc = coll.find_one({"CONE_DIM": 10})
+          result = {"attempts": {}}
+          doc = None
+          chosen = None
+          for name in (
+              "Polytopes.Lattice.SmoothReflexive",
+              "LatticePolytopes.SmoothReflexive",
+              "SmoothReflexive",
+          ):
+              try:
+                  coll = db[name]
+                  sample = coll.find_one({})
+                  result["attempts"][name] = {
+                      "sample_id": None if sample is None else sample.get("_id"),
+                      "sample_keys": [] if sample is None else sorted(sample),
+                  }
+                  print("COLLECTION_ATTEMPT", name, result["attempts"][name], flush=True)
+                  if sample is not None and doc is None:
+                      chosen = name
+                      for query in ({"CONE_DIM": 10}, {"DIM": 9}, {"_id": {"$regex": "9D"}}):
+                          doc = coll.find_one(query)
+                          print("QUERY", name, query, None if doc is None else doc.get("_id"), flush=True)
+                          if doc is not None:
+                              break
+              except PyMongoError as exc:
+                  result["attempts"][name] = {"error": repr(exc)}
+                  print("COLLECTION_ERROR", name, repr(exc), flush=True)
+
           if doc is None:
-              doc = coll.find_one({"DIM": 9})
-          print("ID", doc.get("_id"), flush=True)
-          print("KEYS", sorted(doc), flush=True)
-          summary = {}
+              raise RuntimeError("No dimension-9 record found in candidate collections")
+
+          result["chosen"] = chosen
+          result["id"] = doc.get("_id")
+          result["keys"] = sorted(doc)
+          result["document"] = {}
           for key, value in doc.items():
               if key == "_id":
-                  summary[key] = value
+                  result["document"][key] = value
               elif isinstance(value, (str, int, float, bool, type(None))):
-                  summary[key] = value if not isinstance(value, str) or len(value) < 500 else value[:500]
+                  result["document"][key] = value if not isinstance(value, str) or len(value) < 1000 else value[:1000]
               elif isinstance(value, list):
-                  summary[key] = {"type": "list", "len": len(value), "head": value[:3]}
+                  result["document"][key] = {"type": "list", "len": len(value), "head": value[:3]}
               elif isinstance(value, dict):
-                  summary[key] = {"type": "dict", "keys": list(value)[:30]}
+                  result["document"][key] = {
+                      "type": "dict", "keys": list(value)[:30],
+                      "repr": repr(value)[:2000],
+                  }
               else:
-                  summary[key] = {"type": type(value).__name__, "repr": repr(value)[:500]}
+                  result["document"][key] = {"type": type(value).__name__, "repr": repr(value)[:1000]}
+
           with open("polydb-diagnostic.json", "w") as f:
-              json.dump(summary, f, indent=2, default=str)
-          print("SUMMARY", json.dumps(summary, default=str), flush=True)
+              json.dump(result, f, indent=2, default=str)
+          print("RESULT", json.dumps(result, default=str), flush=True)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
