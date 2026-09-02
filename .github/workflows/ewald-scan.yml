@@ -1,4 +1,4 @@
-name: Ewald dimension-8 scan
+name: Ewald dimension-9 data probe
 
 on:
   push:
@@ -6,46 +6,35 @@ on:
       - ewald-search-20260902
     paths:
       - .github/workflows/ewald-scan.yml
-      - tools/ewald_scan.py
-      - tools/ewald_basis_scan.cpp
+      - tools/polydb_probe.py
 
 permissions:
   contents: read
 
 jobs:
-  basis-scan:
+  polydb-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 20
     steps:
       - name: Check out search code
         uses: actions/checkout@v4
 
-      - name: Acquire the dimension-8 classification
-        run: |
-          git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git magma
-          git -C magma sparse-checkout set libs/data/polytopes/smoothfano8
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Install exact-integer header dependency
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libboost-dev
+      - name: Install MongoDB client
+        run: python -m pip install --disable-pip-version-check pymongo certifi
 
-      - name: Compile independent exact scanner
-        run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_basis_scan.cpp -o ewald_basis_scan
+      - name: Query public polyDB
+        run: python tools/polydb_probe.py polydb-probe.json
 
-      - name: Find and exactly verify a basis in every class
-        id: basis_scan
-        continue-on-error: true
-        run: |
-          ./ewald_basis_scan \
-            magma/libs/data/polytopes/smoothfano8 \
-            basis-scan.json
-
-      - name: Upload basis scan result
+      - name: Upload exact probe response
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-basis-scan
-          path: basis-scan.json
+          name: polydb-dimension9-probe
+          path: polydb-probe.json
           if-no-files-found: warn
           retention-days: 7
