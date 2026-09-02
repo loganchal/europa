@@ -1,0 +1,67 @@
+name: Temporary Ewald polyDB diagnostic
+
+on:
+  push:
+    branches:
+      - automation/ewald-search9-20260903
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check pymongo
+      - name: Inspect public polyDB smooth-reflexive collection
+        run: |
+          python - <<'PY'
+          import json
+          from pymongo import MongoClient
+
+          client = MongoClient(
+              "mongodb://polymake:database@db.polymake.org:27017",
+              tls=True,
+              directConnection=True,
+              serverSelectionTimeoutMS=30000,
+          )
+          print("PING", client.admin.command("ping"), flush=True)
+          db = client.polydb
+          names = [n for n in db.list_collection_names() if "SmoothReflexive" in n]
+          print("COLLECTIONS", names, flush=True)
+          coll = db["Polytopes.Lattice.SmoothReflexive"]
+          for cone_dim in (9, 10):
+              print("COUNT", cone_dim, coll.count_documents({"CONE_DIM": cone_dim}), flush=True)
+          doc = coll.find_one({"CONE_DIM": 10})
+          if doc is None:
+              doc = coll.find_one({"DIM": 9})
+          print("ID", doc.get("_id"), flush=True)
+          print("KEYS", sorted(doc), flush=True)
+          summary = {}
+          for key, value in doc.items():
+              if key == "_id":
+                  summary[key] = value
+              elif isinstance(value, (str, int, float, bool, type(None))):
+                  summary[key] = value if not isinstance(value, str) or len(value) < 500 else value[:500]
+              elif isinstance(value, list):
+                  summary[key] = {"type": "list", "len": len(value), "head": value[:3]}
+              elif isinstance(value, dict):
+                  summary[key] = {"type": "dict", "keys": list(value)[:30]}
+              else:
+                  summary[key] = {"type": type(value).__name__, "repr": repr(value)[:500]}
+          with open("polydb-diagnostic.json", "w") as f:
+              json.dump(summary, f, indent=2, default=str)
+          print("SUMMARY", json.dumps(summary, default=str), flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: polydb-diagnostic
+          path: polydb-diagnostic.json
+          retention-days: 1
