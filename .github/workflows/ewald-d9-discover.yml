@@ -1,0 +1,31 @@
+name: Discover dimension-9 classification files
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - .github/workflows/ewald-d9-discover.yml
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect source page and archives
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 -A 'Mozilla/5.0' \
+            https://polymake.org/polytopes/paffenholz/www/fano.html -o /tmp/fano.html
+          grep -oE 'href="[^"]*fv-09-[^"]*"' /tmp/fano.html || true
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          class P(HTMLParser):
+              def handle_starttag(self, tag, attrs):
+                  d=dict(attrs)
+                  if tag=='a' and 'fv-09-' in d.get('href',''):
+                      print(urljoin('https://polymake.org/polytopes/paffenholz/www/fano.html', d['href']))
+          P().feed(open('/tmp/fano.html').read())
+          PY
