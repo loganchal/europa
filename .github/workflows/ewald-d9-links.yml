@@ -1,0 +1,33 @@
+name: Temporary dimension-9 data-link probe
+
+on:
+  push:
+    branches:
+      - automation/ewald-search9-20260903
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve and inspect public classification page
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 -A 'Mozilla/5.0' \
+            'https://polymake.org/polytopes/paffenholz/www/fano.html' \
+            -o fano.html
+          grep -Eo 'href="[^"]*(fv-09-[^"]+|fano-v9d[^"]*)"' fano.html | sort -u | tee d9-links.txt
+          grep -n -A80 -B5 'Dimension 9' fano.html > d9-section.txt || true
+          wc -c fano.html d9-links.txt d9-section.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d9-links
+          path: |
+            d9-links.txt
+            d9-section.txt
+          retention-days: 1
