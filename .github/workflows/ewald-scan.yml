@@ -32,19 +32,19 @@ jobs:
           git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git magma
           git -C magma sparse-checkout set libs/data/polytopes/smoothfano8
 
-      - name: Scan pilot blocks
+      - name: Scan all 749892 classified polytopes
         run: |
           python tools/ewald_scan.py \
             magma/libs/data/polytopes/smoothfano8 \
-            --blocks 0,50,100 \
-            --top-k 200 \
+            --blocks all \
+            --top-k 500 \
             --output scan-summary.json
 
       - name: Upload exact scan summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-scan-summary
+          name: ewald-full-scan-summary
           path: scan-summary.json
           if-no-files-found: warn
           retention-days: 7
