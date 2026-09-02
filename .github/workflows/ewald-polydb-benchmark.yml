@@ -1,11 +1,7 @@
 name: Ewald PolyDB scanner benchmark
 
 on:
-  pull_request:
-    paths:
-      - '.github/ewald_polydb_scan.py'
-      - '.github/ewald_polydb_scan_fixed.py'
-      - '.github/workflows/ewald-polydb-benchmark.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
