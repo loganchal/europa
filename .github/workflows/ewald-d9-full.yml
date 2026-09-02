@@ -1,0 +1,57 @@
+name: Complete dimension-9 ordinary Ewald census
+
+on:
+  pull_request:
+    paths:
+      - '.github/ewald_polydb_scan.py'
+      - '.github/ewald_polydb_scan_fixed.py'
+      - '.github/aggregate_ewald_d9.py'
+      - '.github/workflows/ewald-d9-full.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  scan:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check numpy pymongo
+      - run: python .github/ewald_polydb_scan_fixed.py --dimension 9 --shard ${{ matrix.shard }} --nshards 128 --outdir ewald-d9-output
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ewald-d9-shard-${{ matrix.shard }}
+          path: ewald-d9-output/d9-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ewald-d9-shard-*
+          path: ewald-d9-results
+          merge-multiple: true
+      - run: python .github/aggregate_ewald_d9.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ewald-d9-census-complete
+          path: |
+            ewald-d9-summary
+            ewald-d9-results
+          if-no-files-found: error
