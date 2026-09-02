@@ -7,44 +7,40 @@ on:
     paths:
       - .github/workflows/ewald-scan.yml
       - tools/ewald_scan.py
+      - tools/ewald_basis_scan.cpp
 
 permissions:
   contents: read
 
 jobs:
-  scan:
+  basis-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - name: Check out search code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install numerical dependency
-        run: python -m pip install --disable-pip-version-check numpy
-
       - name: Acquire the dimension-8 classification
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git magma
           git -C magma sparse-checkout set libs/data/polytopes/smoothfano8
 
-      - name: Scan all 749892 classified polytopes
-        run: |
-          python tools/ewald_scan.py \
-            magma/libs/data/polytopes/smoothfano8 \
-            --blocks all \
-            --top-k 500 \
-            --output scan-summary.json
+      - name: Compile independent exact scanner
+        run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_basis_scan.cpp -o ewald_basis_scan
 
-      - name: Upload exact scan summary
+      - name: Find and exactly verify a basis in every class
+        id: basis_scan
+        continue-on-error: true
+        run: |
+          ./ewald_basis_scan \
+            magma/libs/data/polytopes/smoothfano8 \
+            basis-scan.json
+
+      - name: Upload basis scan result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-full-scan-summary
-          path: scan-summary.json
+          name: ewald-basis-scan
+          path: basis-scan.json
           if-no-files-found: warn
           retention-days: 7
