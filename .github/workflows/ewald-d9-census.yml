@@ -1,0 +1,129 @@
+name: Exact Ewald dimension-9 census
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - .github/workflows/ewald-d9-census.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONHASHSEED: '0'
+
+jobs:
+  census:
+    strategy:
+      fail-fast: false
+      max-parallel: 17
+      matrix:
+        facets: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install exact-search dependencies
+        run: python -m pip install --disable-pip-version-check numpy sympy
+
+      - name: Download classification shard
+        run: |
+          curl -L --fail --retry 5 --retry-delay 2 -sS \
+            "https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9/fv-09-${{ matrix.facets }}p.gz" \
+            -o "/tmp/fv-09-${{ matrix.facets }}p.gz"
+          gzip -t "/tmp/fv-09-${{ matrix.facets }}p.gz"
+          sha256sum "/tmp/fv-09-${{ matrix.facets }}p.gz"
+
+      - name: Run exact census shard
+        run: |
+          python ewald-search/census_d9.py \
+            --input "/tmp/fv-09-${{ matrix.facets }}p.gz" \
+            --facets "${{ matrix.facets }}" \
+            --output "ewald-search/results-d9/${{ matrix.facets }}" \
+            --attempts 256
+
+      - name: Upload shard result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewald-d9-${{ matrix.facets }}p
+          path: ewald-search/results-d9/${{ matrix.facets }}
+          if-no-files-found: warn
+          retention-days: 30
+
+  aggregate:
+    needs: census
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ewald-d9-*p
+          path: /tmp/shards
+
+      - name: Aggregate and validate shard outputs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import shutil
+          from pathlib import Path
+
+          root = Path('/tmp/shards')
+          out = Path('/tmp/combined')
+          out.mkdir(parents=True, exist_ok=True)
+          summaries = []
+          exceptional = []
+          for path in root.rglob('summary.json'):
+              summaries.append(json.loads(path.read_text()))
+          for name in ('COUNTEREXAMPLE.json', 'UNRESOLVED.json'):
+              for path in root.rglob(name):
+                  value = json.loads(path.read_text())
+                  value['_artifact_path'] = str(path)
+                  exceptional.append(value)
+                  shutil.copy2(path, out / f'{path.parent.parent.name}-{name}')
+          summaries.sort(key=lambda x: x['facet_count'])
+          smallest = []
+          for summary in summaries:
+              smallest.extend(summary.get('smallest_100', []))
+          smallest.sort(key=lambda x: (x['ewald_point_count'], x['source_file'], x['ordinal_in_file']))
+          result = {
+              'dimension': 9,
+              'expected_shards': 17,
+              'received_summaries': len(summaries),
+              'expected_total': 8229721,
+              'processed_total': sum(x['processed'] for x in summaries),
+              'all_shards_complete': len(summaries) == 17 and all(x['complete'] for x in summaries),
+              'exceptional_count': len(exceptional),
+              'complete_no_exception': False,
+              'minimum_ewald_count': min((x['minimum_ewald_count'] for x in summaries), default=None),
+              'shards': [{k: v for k, v in x.items() if k != 'smallest_100'} for x in summaries],
+              'smallest_300': smallest[:300],
+              'exceptional': exceptional,
+          }
+          result['complete_no_exception'] = (
+              result['all_shards_complete']
+              and result['processed_total'] == result['expected_total']
+              and result['exceptional_count'] == 0
+          )
+          (out / 'combined-summary.json').write_text(json.dumps(result, indent=2, sort_keys=True) + '\n')
+          print(json.dumps({k: result[k] for k in (
+              'received_summaries', 'processed_total', 'exceptional_count',
+              'minimum_ewald_count', 'complete_no_exception')}, sort_keys=True))
+          PY
+
+      - name: Upload combined result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewald-d9-combined
+          path: /tmp/combined
+          if-no-files-found: error
+          retention-days: 30
