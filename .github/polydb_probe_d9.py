@@ -6,23 +6,21 @@ from pymongo import MongoClient
 
 URI = 'mongodb://polymake:database@db.polymake.org:27017'
 COLLECTION = 'Polytopes.Lattice.SmoothReflexive'
-
 client = MongoClient(URI, tls=True, directConnection=True,
                      serverSelectionTimeoutMS=30000,
                      connectTimeoutMS=30000,
-                     socketTimeoutMS=120000)
+                     socketTimeoutMS=60000)
 client.admin.command('ping')
-print('PING_OK')
+print('PING_OK', flush=True)
 db = client.polydb
 coll = db[COLLECTION]
 
 queries = [
-    {'_id': {'$regex': r'^F\\.9D\\.'}},
+    {},
+    {'_id': {'$gte': 'F.9D.', '$lt': 'F.9D/'}},
+    {'_id': {'$regex': r'^F\.9D\.'}},
     {'CONE_DIM': 10},
     {'DIM': 9},
-    {'CONE_DIM': 9},
-    {'_id': 'F.9D.0000001'},
-    {},
 ]
 
 def shape(v):
@@ -43,25 +41,26 @@ def shape(v):
 
 for q in queries:
     try:
-        doc = coll.find_one(q)
-        print('QUERY', json.dumps(q, default=str), 'FOUND', doc is not None)
+        doc = coll.find_one(q, max_time_ms=30000)
+        print('QUERY', json.dumps(q, default=str), 'FOUND', doc is not None, flush=True)
         if doc is None:
             continue
-        print('ID', doc.get('_id'))
-        print('KEYS', json.dumps(sorted(doc.keys())))
-        print('SHAPES', json.dumps({k: shape(v) for k,v in doc.items()}, default=str))
-        print('DOCUMENT', json_util.dumps(doc)[:50000])
-        break
+        print('ID', doc.get('_id'), flush=True)
+        print('KEYS', json.dumps(sorted(doc.keys())), flush=True)
+        print('SHAPES', json.dumps({k: shape(v) for k,v in doc.items()}, default=str), flush=True)
+        print('DOCUMENT', json_util.dumps(doc)[:50000], flush=True)
+        if q:
+            break
     except Exception as exc:
-        print('QUERY_ERROR', json.dumps(q, default=str), type(exc).__name__, str(exc))
+        print('QUERY_ERROR', json.dumps(q, default=str), type(exc).__name__, str(exc), flush=True)
 
 for info_name in ('_collectionInfo.' + COLLECTION,
                   '_sectionInfo.Polytopes.Lattice'):
     try:
-        d = db[info_name].find_one({})
-        print('INFO', info_name, 'FOUND', d is not None)
+        d = db[info_name].find_one({}, max_time_ms=30000)
+        print('INFO', info_name, 'FOUND', d is not None, flush=True)
         if d:
-            print('INFO_KEYS', json.dumps(sorted(d.keys())))
-            print('INFO_DOC', json_util.dumps(d)[:50000])
+            print('INFO_KEYS', json.dumps(sorted(d.keys())), flush=True)
+            print('INFO_DOC', json_util.dumps(d)[:50000], flush=True)
     except Exception as exc:
-        print('INFO_ERROR', info_name, type(exc).__name__, str(exc))
+        print('INFO_ERROR', info_name, type(exc).__name__, str(exc), flush=True)
