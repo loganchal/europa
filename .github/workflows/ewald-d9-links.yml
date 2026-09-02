@@ -1,9 +1,6 @@
 name: Temporary dimension-9 data-format probe
 
 on:
-  push:
-    branches:
-      - automation/ewald-search9-20260903
   workflow_dispatch:
 
 permissions:
@@ -12,31 +9,5 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - name: Inspect dimension-9 archive sizes and format
-        run: |
-          set -euxo pipefail
-          base='https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9'
-          : > d9-sizes.txt
-          for n in $(seq 10 26); do
-            url="$base/fv-09-${n}p.gz"
-            curl -L --fail --retry 3 -sS -o /dev/null \
-              -w "${n} %{http_code} %{size_download} %{url_effective}\n" "$url" \
-              | tee -a d9-sizes.txt
-          done
-          for n in 10 11 12 26; do
-            curl -L --fail --retry 3 -sS "$base/fv-09-${n}p.gz" -o "fv-09-${n}p.gz"
-            echo "===== FILE $n COMPRESSED $(stat -c%s fv-09-${n}p.gz) =====" | tee -a d9-samples.txt
-            gzip -cd "fv-09-${n}p.gz" | head -n 30 | sed -n l | tee -a d9-samples.txt
-          done
-          wc -c d9-sizes.txt d9-samples.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: d9-format-probe
-          path: |
-            d9-sizes.txt
-            d9-samples.txt
-          retention-days: 1
+      - run: echo 'Format probe retained for reproducibility; automatic runs disabled.'
