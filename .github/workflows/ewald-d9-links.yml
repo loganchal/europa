@@ -1,4 +1,4 @@
-name: Temporary dimension-9 data-link probe
+name: Temporary dimension-9 data-format probe
 
 on:
   push:
@@ -10,24 +10,33 @@ permissions:
   contents: read
 
 jobs:
-  links:
+  probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Retrieve and inspect public classification page
+      - name: Inspect dimension-9 archive sizes and format
         run: |
           set -euxo pipefail
-          curl -L --fail --retry 3 -A 'Mozilla/5.0' \
-            'https://polymake.org/polytopes/paffenholz/www/fano.html' \
-            -o fano.html
-          grep -Eo 'href="[^"]*(fv-09-[^"]+|fano-v9d[^"]*)"' fano.html | sort -u | tee d9-links.txt
-          grep -n -A80 -B5 'Dimension 9' fano.html > d9-section.txt || true
-          wc -c fano.html d9-links.txt d9-section.txt
+          base='https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9'
+          : > d9-sizes.txt
+          for n in $(seq 10 26); do
+            url="$base/fv-09-${n}p.gz"
+            curl -L --fail --retry 3 -sS -o /dev/null \
+              -w "${n} %{http_code} %{size_download} %{url_effective}\n" "$url" \
+              | tee -a d9-sizes.txt
+          done
+          for n in 10 11 12 26; do
+            curl -L --fail --retry 3 -sS "$base/fv-09-${n}p.gz" -o "fv-09-${n}p.gz"
+            echo "===== FILE $n COMPRESSED $(stat -c%s fv-09-${n}p.gz) =====" | tee -a d9-samples.txt
+            gzip -cd "fv-09-${n}p.gz" | head -n 30 | sed -n l | tee -a d9-samples.txt
+          done
+          wc -c d9-sizes.txt d9-samples.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: d9-links
+          name: d9-format-probe
           path: |
-            d9-links.txt
-            d9-section.txt
+            d9-sizes.txt
+            d9-samples.txt
           retention-days: 1
