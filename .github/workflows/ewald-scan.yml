@@ -1,4 +1,4 @@
-name: Ewald dimension-9 scan pilot
+name: Ewald dimension-9 C++ pilot
 
 on:
   push:
@@ -6,13 +6,14 @@ on:
       - ewald-search-20260902
     paths:
       - .github/workflows/ewald-scan.yml
-      - tools/polydb_ewald_scan.py
+      - tools/polydb_binary_stream.py
+      - tools/ewald_dim9_backend.cpp
 
 permissions:
   contents: read
 
 jobs:
-  pilot:
+  cpp-pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -24,23 +25,31 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check pymongo numpy
+      - name: Install MongoDB client
+        run: python -m pip install --disable-pip-version-check pymongo
 
-      - name: Scan 113971 classified dimension-9 polytopes
+      - name: Compile exact scanner backend
+        run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_dim9_backend.cpp -o ewald_dim9_backend
+
+      - name: Stream and scan 113971 dimension-9 polytopes
         run: |
-          python tools/polydb_ewald_scan.py \
-            --shard pilot \
+          set -o pipefail
+          python tools/polydb_binary_stream.py \
+            --shard cpp-pilot \
             --ranges 13:0:63971,14:0:50000 \
-            --top-k 250 \
-            --basis-trials 10000 \
-            --output dim9-pilot.json
+            --progress-every 25000 \
+          | ./ewald_dim9_backend \
+            --shard cpp-pilot \
+            --ranges 13:0:63971,14:0:50000 \
+            --output dim9-cpp-pilot.json \
+            --top-k 100 \
+            --max-trials 5000
 
-      - name: Upload exact pilot result
+      - name: Upload exact C++ pilot result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-dimension9-pilot
-          path: dim9-pilot.json
+          name: ewald-dimension9-cpp-pilot
+          path: dim9-cpp-pilot.json
           if-no-files-found: warn
           retention-days: 7
