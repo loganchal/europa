@@ -1,0 +1,50 @@
+name: Ewald dimension-8 scan
+
+on:
+  push:
+    branches:
+      - ewald-search-20260902
+    paths:
+      - .github/workflows/ewald-scan.yml
+      - tools/ewald_scan.py
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out search code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numerical dependency
+        run: python -m pip install --disable-pip-version-check numpy
+
+      - name: Acquire the dimension-8 classification
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git magma
+          git -C magma sparse-checkout set libs/data/polytopes/smoothfano8
+
+      - name: Scan pilot blocks
+        run: |
+          python tools/ewald_scan.py \
+            magma/libs/data/polytopes/smoothfano8 \
+            --blocks 0,50,100 \
+            --top-k 200 \
+            --output scan-summary.json
+
+      - name: Upload exact scan summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewald-scan-summary
+          path: scan-summary.json
+          if-no-files-found: warn
+          retention-days: 7
