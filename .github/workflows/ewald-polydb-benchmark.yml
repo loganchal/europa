@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/ewald_polydb_scan.py'
+      - '.github/ewald_polydb_scan_fixed.py'
       - '.github/workflows/ewald-polydb-benchmark.yml'
 
 permissions:
@@ -19,7 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check numpy pymongo
-      - run: python .github/ewald_polydb_scan.py --dimension 7 --limit 5000 --outdir benchmark-results
+      - run: python .github/ewald_polydb_scan_fixed.py --dimension 7 --limit 5000 --outdir benchmark-results
       - uses: actions/upload-artifact@v4
         with:
           name: ewald-d7-sample
@@ -38,7 +39,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check numpy pymongo
-      - run: python .github/ewald_polydb_scan.py --dimension 9 --shard ${{ matrix.shard }} --nshards 128 --outdir benchmark-results
+      - run: python .github/ewald_polydb_scan_fixed.py --dimension 9 --shard ${{ matrix.shard }} --nshards 128 --outdir benchmark-results
       - uses: actions/upload-artifact@v4
         with:
           name: ewald-d9-benchmark-${{ matrix.shard }}
