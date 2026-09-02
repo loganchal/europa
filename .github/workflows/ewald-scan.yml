@@ -1,4 +1,4 @@
-name: Ewald dimension-9 C++ pilot
+name: Ewald complete dimension-9 scan
 
 on:
   push:
@@ -13,9 +13,39 @@ permissions:
   contents: read
 
 jobs:
-  cpp-pilot:
+  scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - shard: A
+            ranges: "10:0:1,11:0:91,12:0:3331,13:0:63971,14:0:583544"
+          - shard: B
+            ranges: "15:0:680000"
+          - shard: C
+            ranges: "15:680000:1360000"
+          - shard: D
+            ranges: "15:1360000:2039665"
+          - shard: E
+            ranges: "16:0:705577"
+          - shard: F
+            ranges: "16:705577:1411154"
+          - shard: G
+            ranges: "16:1411154:2116731"
+          - shard: H
+            ranges: "16:2116731:2822309"
+          - shard: I
+            ranges: "17:0:609749"
+          - shard: J
+            ranges: "17:609749:1219498"
+          - shard: K
+            ranges: "17:1219498:1829247"
+          - shard: L
+            ranges: "18:0:666151,19:0:173077,20:0:39218,21:0:7515,22:0:1324,23:0:226,24:0:44,25:0:5,26:0:2"
+    name: scan-${{ matrix.shard }}
     steps:
       - name: Check out search code
         uses: actions/checkout@v4
@@ -31,25 +61,25 @@ jobs:
       - name: Compile exact scanner backend
         run: g++ -O3 -std=c++20 -Wall -Wextra -pedantic tools/ewald_dim9_backend.cpp -o ewald_dim9_backend
 
-      - name: Stream and scan 113971 dimension-9 polytopes
+      - name: Stream and scan classification shard
         run: |
           set -o pipefail
           python tools/polydb_binary_stream.py \
-            --shard cpp-pilot \
-            --ranges 13:0:63971,14:0:50000 \
-            --progress-every 25000 \
+            --shard "${{ matrix.shard }}" \
+            --ranges "${{ matrix.ranges }}" \
+            --progress-every 100000 \
           | ./ewald_dim9_backend \
-            --shard cpp-pilot \
-            --ranges 13:0:63971,14:0:50000 \
-            --output dim9-cpp-pilot.json \
+            --shard "${{ matrix.shard }}" \
+            --ranges "${{ matrix.ranges }}" \
+            --output "dim9-${{ matrix.shard }}.json" \
             --top-k 100 \
             --max-trials 5000
 
-      - name: Upload exact C++ pilot result
+      - name: Upload exact shard result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ewald-dimension9-cpp-pilot
-          path: dim9-cpp-pilot.json
+          name: ewald-dimension9-${{ matrix.shard }}
+          path: dim9-${{ matrix.shard }}.json
           if-no-files-found: warn
           retention-days: 7
