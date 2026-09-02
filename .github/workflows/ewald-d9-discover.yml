@@ -12,20 +12,20 @@ jobs:
   discover:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect source page and archives
+      - name: Inspect archive sizes and format
         shell: bash
         run: |
           set -euxo pipefail
-          curl -L --fail --retry 3 -A 'Mozilla/5.0' \
-            https://polymake.org/polytopes/paffenholz/www/fano.html -o /tmp/fano.html
-          grep -oE 'href="[^"]*fv-09-[^"]*"' /tmp/fano.html || true
-          python - <<'PY'
-          from html.parser import HTMLParser
-          from urllib.parse import urljoin
-          class P(HTMLParser):
-              def handle_starttag(self, tag, attrs):
-                  d=dict(attrs)
-                  if tag=='a' and 'fv-09-' in d.get('href',''):
-                      print(urljoin('https://polymake.org/polytopes/paffenholz/www/fano.html', d['href']))
-          P().feed(open('/tmp/fano.html').read())
-          PY
+          base=https://polymake.org/polytopes/paffenholz/data/smooth-fano/d9
+          for n in $(seq 10 26); do
+            url="$base/fv-09-${n}p.gz"
+            printf '%s ' "$n"
+            curl -L --fail --retry 3 -sS -o /dev/null -w 'bytes=%{size_download} code=%{http_code}\n' "$url"
+          done
+          curl -L --fail --retry 3 -sS "$base/fv-09-10p.gz" -o /tmp/sample.gz
+          echo '--- gzip metadata ---'
+          gzip -l /tmp/sample.gz
+          echo '--- first 20 decompressed lines ---'
+          gzip -cd /tmp/sample.gz | head -n 20 || true
+          echo '--- line and byte counts ---'
+          gzip -cd /tmp/sample.gz | wc -lc
