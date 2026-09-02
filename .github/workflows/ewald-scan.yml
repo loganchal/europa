@@ -1,4 +1,4 @@
-name: Ewald dimension-9 data probe
+name: Ewald dimension-9 database statistics
 
 on:
   push:
@@ -6,15 +6,15 @@ on:
       - ewald-search-20260902
     paths:
       - .github/workflows/ewald-scan.yml
-      - tools/polydb_probe.py
+      - tools/polydb_dim9_stats.py
 
 permissions:
   contents: read
 
 jobs:
-  polydb-probe:
+  dim9-stats:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Check out search code
         uses: actions/checkout@v4
@@ -25,16 +25,16 @@ jobs:
           python-version: "3.12"
 
       - name: Install MongoDB client
-        run: python -m pip install --disable-pip-version-check pymongo certifi
+        run: python -m pip install --disable-pip-version-check pymongo
 
-      - name: Query public polyDB
-        run: python tools/polydb_probe.py polydb-probe.json
+      - name: Inspect dimension-9 shards and throughput
+        run: python tools/polydb_dim9_stats.py dim9-stats.json
 
-      - name: Upload exact probe response
+      - name: Upload statistics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: polydb-dimension9-probe
-          path: polydb-probe.json
+          name: polydb-dimension9-stats
+          path: dim9-stats.json
           if-no-files-found: warn
           retention-days: 7
