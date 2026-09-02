@@ -1,0 +1,47 @@
+name: Exact Ewald dimension-8 census
+
+on:
+  push:
+    branches:
+      - chatgpt-ewald-census-20260902
+    paths:
+      - ewald-search/**
+      - .github/workflows/ewald-census.yml
+  workflow_dispatch:
+
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install exact-search dependencies
+        run: python -m pip install --disable-pip-version-check numpy sympy
+
+      - name: Fetch the complete dimension-8 classification
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/GorrieXIV/Magma.git /tmp/Magma
+          cd /tmp/Magma
+          git sparse-checkout set libs/data/polytopes/smoothfano8
+          test -f libs/data/polytopes/smoothfano8/block100
+
+      - name: Run census
+        run: |
+          python ewald-search/census.py \
+            --data /tmp/Magma/libs/data/polytopes/smoothfano8 \
+            --output ewald-search/results \
+            --attempts 96
+
+      - name: Upload exact results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewald-d8-census-results
+          path: ewald-search/results
+          if-no-files-found: warn
+          retention-days: 30
